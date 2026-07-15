@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { LogOut, Navigation, Signal, ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
 import Map, { stringToColor } from '../components/Map';
+import { BASE_URL } from '../utils/api';
 
 export default function MapRoom({ user, room, onLeaveRoom }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -14,7 +15,12 @@ export default function MapRoom({ user, room, onLeaveRoom }) {
 
   useEffect(() => {
     const token = localStorage.getItem('geo_token');
-    const socket = io({ auth: { token } });
+    
+    // In production, BASE_URL is the Render backend url. In local dev, it's empty (uses Vite proxy).
+    // socket.io needs an explicit URL if frontend and backend are on different domains.
+    const socketUrl = BASE_URL || undefined; 
+    const socket = io(socketUrl, { auth: { token } });
+    
     socketRef.current = socket;
 
     socket.on('connect', () => {

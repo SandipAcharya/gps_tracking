@@ -1,5 +1,5 @@
 // Centralized API client — all requests go through here
-const BASE_URL = import.meta.env.VITE_API_URL || '';
+export const BASE_URL = import.meta.env.VITE_API_URL || '';
 
 const api = async (endpoint, options = {}) => {
   const token = localStorage.getItem('geo_token');
