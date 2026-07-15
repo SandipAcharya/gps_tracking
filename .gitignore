@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+*.env
+
+# Node
+node_modules/
+npm-debug.log*
+dist/
+.cache/
+
+# Environment (NEVER commit this!)
+.env
+*.env.local
+
+# Misc
+.DS_Store
+rooms_db.json
