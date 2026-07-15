@@ -65,9 +65,9 @@ export default function MapRoom({ user, room, onLeaveRoom }) {
   }, [socketConnected]);
 
   // Deduplicate users in case they have multiple tabs open. Prefer the socket with active GPS.
-  const uniqueUsersMap = new Map();
+  const uniqueUsersMap = new window.Map();
   roomUsers.forEach(u => {
-    const key = u.email || u.phone || u.userId;
+    const key = u.userId || u.email || u.phone;
     if (!uniqueUsersMap.has(key) || (u.lat && u.lng)) {
       uniqueUsersMap.set(key, u);
     }
@@ -105,8 +105,8 @@ export default function MapRoom({ user, room, onLeaveRoom }) {
 
           <div className="member-list">
             {uniqueUsers.map(u => {
-              const isMe = u.email === user.email;
-              const color = isMe ? '#6366f1' : stringToColor(u.email);
+              const isMe = u.userId === user.id;
+              const color = isMe ? '#6366f1' : stringToColor(u.email || u.phone);
               const hasLocation = u.lat && u.lng;
 
               return (
