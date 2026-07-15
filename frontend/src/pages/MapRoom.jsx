@@ -64,7 +64,17 @@ export default function MapRoom({ user, room, onLeaveRoom }) {
     }
   }, [socketConnected]);
 
-  const locatedCount = roomUsers.filter(u => u.lat && u.lng).length;
+  // Deduplicate users in case they have multiple tabs open. Prefer the socket with active GPS.
+  const uniqueUsersMap = new Map();
+  roomUsers.forEach(u => {
+    const key = u.email || u.phone || u.userId;
+    if (!uniqueUsersMap.has(key) || (u.lat && u.lng)) {
+      uniqueUsersMap.set(key, u);
+    }
+  });
+  const uniqueUsers = Array.from(uniqueUsersMap.values());
+
+  const locatedCount = uniqueUsers.filter(u => u.lat && u.lng).length;
 
   return (
     <div className="map-layout">
@@ -90,11 +100,11 @@ export default function MapRoom({ user, room, onLeaveRoom }) {
         {/* Members List */}
         <div className="sidebar-content">
           <div className="sidebar-section-label">
-            <MapPin size={13} /> {locatedCount} of {roomUsers.length} located
+            <MapPin size={13} /> {locatedCount} of {uniqueUsers.length} located
           </div>
 
           <div className="member-list">
-            {roomUsers.map(u => {
+            {uniqueUsers.map(u => {
               const isMe = u.email === user.email;
               const color = isMe ? '#6366f1' : stringToColor(u.email);
               const hasLocation = u.lat && u.lng;
@@ -128,7 +138,7 @@ export default function MapRoom({ user, room, onLeaveRoom }) {
               );
             })}
 
-            {roomUsers.length === 0 && (
+            {uniqueUsers.length === 0 && (
               <div className="member-empty">No one else has joined yet</div>
             )}
           </div>
@@ -147,7 +157,7 @@ export default function MapRoom({ user, room, onLeaveRoom }) {
           </div>
         </div>
         <Map
-          users={roomUsers}
+          users={uniqueUsers}
           currentUserEmail={user.email}
           myLocation={myLocation}
           focusLocation={focusLocation}
