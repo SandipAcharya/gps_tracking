@@ -1,131 +1,182 @@
 import React, { useState } from 'react';
-import { User, ArrowRight, ShieldCheck, Mail, Building, Briefcase } from 'lucide-react';
+import api from '../utils/api';
 
-const Login = ({ onLogin }) => {
-  const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState({
-    email: '',
-    otp: '',
-    name: '',
-    office: '',
-    designation: ''
-  });
+const STEPS = { IDENTIFY: 1, OTP: 2 };
+
+export default function Login({ onLogin }) {
+  const [step, setStep] = useState(STEPS.IDENTIFY);
+  const [identifier, setIdentifier] = useState('');
+  const [isEmail, setIsEmail] = useState(true);
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [devOtp, setDevOtp] = useState('');
 
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
-
-  const handleSendOTP = (e) => {
-    e.preventDefault();
-    if (!formData.email) return setError('Email or Phone is required');
+  const handleIdentifierChange = (val) => {
+    setIdentifier(val);
+    setIsEmail(!val.startsWith('+') && !/^\d/.test(val));
     setError('');
-    // Mock OTP mechanism
-    alert('For testing: Use OTP 123456');
-    setStep(2);
   };
 
-  const handleVerifyOTP = (e) => {
+  const handleRequestOtp = async (e) => {
     e.preventDefault();
-    if (formData.otp !== '123456') return setError('Invalid OTP. Please enter 123456.');
+    if (!identifier.trim()) return setError('Please enter your email or phone number.');
+    setLoading(true);
     setError('');
-    setStep(3);
-  };
-
-  const handleProfileComplete = (e) => {
-    e.preventDefault();
-    if (!formData.name || !formData.office || !formData.designation) {
-      return setError('Please fill in all profile details');
+    try {
+      const data = await api('/api/auth/request-otp', {
+        method: 'POST',
+        body: JSON.stringify({ identifier: identifier.trim() })
+      });
+      setDevOtp(data.devOtp || '');
+      setStep(STEPS.OTP);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
-    
-    // Automatically make 'admin' based on email (for testing purposes)
-    const isAdmin = formData.email.toLowerCase().includes('admin');
-    
-    onLogin({ ...formData, isAdmin });
+  };
+
+  const handleOtpChange = (idx, val) => {
+    if (!/^\d?$/.test(val)) return;
+    const next = [...otp];
+    next[idx] = val;
+    setOtp(next);
+    if (val && idx < 5) {
+      document.getElementById(`otp-${idx + 1}`)?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e) => {
+    const paste = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (paste.length === 6) {
+      setOtp(paste.split(''));
+      document.getElementById('otp-5')?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (idx, e) => {
+    if (e.key === 'Backspace' && !otp[idx] && idx > 0) {
+      document.getElementById(`otp-${idx - 1}`)?.focus();
+    }
+  };
+
+  const handleVerify = async (e) => {
+    e.preventDefault();
+    const otpString = otp.join('');
+    if (otpString.length < 6) return setError('Please enter the complete 6-digit code.');
+    setLoading(true);
+    setError('');
+    try {
+      const data = await api('/api/auth/verify-otp', {
+        method: 'POST',
+        body: JSON.stringify({ identifier: identifier.trim(), otp: otpString })
+      });
+      onLogin(data.token, data.user);
+    } catch (err) {
+      setError(err.message);
+      setOtp(['', '', '', '', '', '']);
+      document.getElementById('otp-0')?.focus();
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="login-page">
-      <div className="login-card glass-panel">
-        <div className="login-header">
-          <div className="flex justify-center mb-4">
-            <div style={{ background: 'var(--primary)', padding: '1rem', borderRadius: '50%', display: 'inline-block', marginBottom: '1rem' }}>
-              {step === 1 && <Mail size={32} color="white" />}
-              {step === 2 && <ShieldCheck size={32} color="white" />}
-              {step === 3 && <User size={32} color="white" />}
-            </div>
+    <div className="auth-bg">
+      <div className="auth-card">
+        {/* Logo */}
+        <div className="auth-logo">
+          <div className="logo-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="3" fill="white"/>
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="white" opacity="0.3"/>
+              <circle cx="12" cy="9" r="2.5" fill="white"/>
+            </svg>
           </div>
-          <h1>{step === 1 ? 'GeoTracker' : step === 2 ? 'Verification' : 'Profile Setup'}</h1>
-          <p>
-            {step === 1 && 'Enter your email or phone to receive an OTP'}
-            {step === 2 && `Enter the OTP sent to ${formData.email}`}
-            {step === 3 && 'Complete your professional profile'}
-          </p>
+          <div>
+            <h1 className="logo-name">GeoTracker</h1>
+            <p className="logo-tagline">Real-time team location</p>
+          </div>
         </div>
 
-        {error && <div className="error-message">{error}</div>}
+        {step === STEPS.IDENTIFY && (
+          <form onSubmit={handleRequestOtp} className="auth-form">
+            <div className="form-header">
+              <h2>Welcome back</h2>
+              <p>Enter your email or phone to continue</p>
+            </div>
 
-        {step === 1 && (
-          <form onSubmit={handleSendOTP}>
-            <div className="input-group" style={{ marginBottom: '2rem' }}>
+            <div className="input-group">
               <label>Email or Phone Number</label>
-              <input 
-                type="text" name="email" className="input-field" 
-                placeholder="e.g. admin@company.com" 
-                value={formData.email} onChange={handleChange} autoFocus
+              <input
+                type="text"
+                className="form-input"
+                placeholder="email@company.com or +977 98XXXXXXXX"
+                value={identifier}
+                onChange={e => handleIdentifierChange(e.target.value)}
+                autoFocus
               />
-              <small style={{ color: 'var(--text-muted)', marginTop: '0.5rem', fontSize: '0.8rem' }}>
-                Hint: Use an email containing 'admin' to get room creation rights.
-              </small>
+              <span className="input-hint">
+                {identifier && (isEmail ? '📧 We\'ll send a code to this email' : '📱 We\'ll send a code to this number')}
+              </span>
             </div>
-            <button type="submit" className="btn-primary">Send OTP <ArrowRight size={20} /></button>
+
+            {error && <div className="form-error">{error}</div>}
+
+            <button type="submit" className="btn-primary" disabled={loading}>
+              {loading ? <span className="btn-spinner"></span> : 'Send Verification Code'}
+            </button>
           </form>
         )}
 
-        {step === 2 && (
-          <form onSubmit={handleVerifyOTP}>
-            <div className="input-group" style={{ marginBottom: '2rem' }}>
-              <label>One Time Password (OTP)</label>
-              <input 
-                type="text" name="otp" className="input-field" 
-                placeholder="Enter 6-digit OTP" 
-                value={formData.otp} onChange={handleChange} autoFocus
-              />
+        {step === STEPS.OTP && (
+          <form onSubmit={handleVerify} className="auth-form">
+            <div className="form-header">
+              <h2>Check your {isEmail ? 'email' : 'phone'}</h2>
+              <p>
+                We sent a 6-digit code to <strong>{identifier}</strong>
+              </p>
+              {devOtp && (
+                <div className="dev-badge">
+                  🛠 Dev Mode · OTP: <strong>{devOtp}</strong>
+                </div>
+              )}
             </div>
-            <button type="submit" className="btn-primary">Verify OTP <ShieldCheck size={20} /></button>
-          </form>
-        )}
 
-        {step === 3 && (
-          <form onSubmit={handleProfileComplete}>
-            <div className="input-group">
-              <label>Full Name</label>
-              <input 
-                type="text" name="name" className="input-field" 
-                placeholder="e.g. Ram Bahadur" 
-                value={formData.name} onChange={handleChange} autoFocus
-              />
+            <div className="otp-grid" onPaste={handleOtpPaste}>
+              {otp.map((digit, idx) => (
+                <input
+                  key={idx}
+                  id={`otp-${idx}`}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={1}
+                  className={`otp-box ${digit ? 'filled' : ''}`}
+                  value={digit}
+                  onChange={e => handleOtpChange(idx, e.target.value)}
+                  onKeyDown={e => handleOtpKeyDown(idx, e)}
+                  autoFocus={idx === 0}
+                />
+              ))}
             </div>
-            <div className="input-group">
-              <label>Office / Department</label>
-              <input 
-                type="text" name="office" className="input-field" 
-                placeholder="e.g. Head Office, IT Dept" 
-                value={formData.office} onChange={handleChange}
-              />
-            </div>
-            <div className="input-group" style={{ marginBottom: '2rem' }}>
-              <label>Designation</label>
-              <input 
-                type="text" name="designation" className="input-field" 
-                placeholder="e.g. Software Engineer" 
-                value={formData.designation} onChange={handleChange}
-              />
-            </div>
-            <button type="submit" className="btn-primary">Complete Setup <ArrowRight size={20} /></button>
+
+            {error && <div className="form-error">{error}</div>}
+
+            <button type="submit" className="btn-primary" disabled={loading}>
+              {loading ? <span className="btn-spinner"></span> : 'Verify & Sign In'}
+            </button>
+
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={() => { setStep(STEPS.IDENTIFY); setError(''); setOtp(['','','','','','']); }}
+            >
+              ← Change {isEmail ? 'email' : 'number'}
+            </button>
           </form>
         )}
       </div>
     </div>
   );
-};
-
-export default Login;
+}

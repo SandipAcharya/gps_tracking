@@ -1,123 +1,217 @@
-import React, { useState } from 'react';
-import { MapPin, Lock, LogIn, LogOut, PlusCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { LogOut, Plus, Lock, Building2, Users, ChevronRight, Loader2 } from 'lucide-react';
+import api from '../utils/api';
 
-const Dashboard = ({ user, onJoinRoom, onLogout }) => {
-  const [activeTab, setActiveTab] = useState('join'); // 'join' or 'create'
-  const [formData, setFormData] = useState({
-    roomId: '',
-    password: ''
-  });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+export default function Dashboard({ user, onJoinRoom, onLogout }) {
+  const [rooms, setRooms] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [joiningRoomId, setJoiningRoomId] = useState(null);
+  const [passwordInput, setPasswordInput] = useState({});
+  const [errors, setErrors] = useState({});
+  const [showCreate, setShowCreate] = useState(false);
+  const [createForm, setCreateForm] = useState({ roomId: '', password: '', company: '' });
+  const [createError, setCreateError] = useState('');
+  const [createLoading, setCreateLoading] = useState(false);
 
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+  const isAdmin = user.role === 'admin';
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    
-    if (!formData.roomId || !formData.password) {
-      return setError('Please fill in both Room ID and Password');
-    }
+  useEffect(() => {
+    api('/api/rooms')
+      .then(data => setRooms(data.rooms))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
 
-    setLoading(true);
-    const endpoint = activeTab === 'create' ? '/api/room/create' : '/api/room/join';
-
+  const handleJoin = async (roomId) => {
+    const pwd = passwordInput[roomId] || '';
+    if (!pwd) return setErrors(e => ({ ...e, [roomId]: 'Enter the room password.' }));
+    setErrors(e => ({ ...e, [roomId]: '' }));
     try {
-      const response = await fetch(endpoint, {
+      const data = await api('/api/rooms/join', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          roomId: formData.roomId,
-          password: formData.password,
-          isAdmin: user.isAdmin,
-          email: user.email
-        })
+        body: JSON.stringify({ roomId, password: pwd })
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || `Failed to ${activeTab} room`);
-      }
-
-      onJoinRoom({ roomId: formData.roomId });
+      onJoinRoom({ roomId: data.roomId, company: data.company });
     } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+      setErrors(e => ({ ...e, [roomId]: err.message }));
     }
   };
 
-  return (
-    <div className="login-page">
-      <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
-        <button onClick={onLogout} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-main)', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer' }}>
-          <LogOut size={16} /> Logout ({user.name})
-        </button>
-      </div>
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    if (!createForm.roomId || !createForm.password) return setCreateError('Room ID and password are required.');
+    setCreateLoading(true);
+    setCreateError('');
+    try {
+      await api('/api/rooms/create', {
+        method: 'POST',
+        body: JSON.stringify(createForm)
+      });
+      const data = await api('/api/rooms');
+      setRooms(data.rooms);
+      setShowCreate(false);
+      setCreateForm({ roomId: '', password: '', company: '' });
+    } catch (err) {
+      setCreateError(err.message);
+    } finally {
+      setCreateLoading(false);
+    }
+  };
 
-      <div className="login-card glass-panel">
-        <div className="login-header">
-          <div className="flex justify-center mb-4">
-            <div style={{ background: 'var(--accent)', padding: '1rem', borderRadius: '50%', display: 'inline-block', marginBottom: '1rem' }}>
-              <MapPin size={32} color="white" />
-            </div>
+  const initials = (user.name || user.email || '?').charAt(0).toUpperCase();
+
+  return (
+    <div className="dashboard-bg">
+      {/* Top Nav */}
+      <nav className="dash-nav">
+        <div className="dash-nav-logo">
+          <div className="logo-icon small">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="9" r="2.5" fill="white"/>
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="white" opacity="0.4"/>
+            </svg>
           </div>
-          <h1>{user.isAdmin ? 'Room Dashboard' : 'Join a Room'}</h1>
-          <p>Welcome, {user.name} ({user.designation})</p>
+          <span>GeoTracker</span>
         </div>
 
-        {user.isAdmin && (
-          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
-            <button 
-              onClick={() => { setActiveTab('join'); setError(''); }}
-              style={{ flex: 1, padding: '0.5rem', background: activeTab === 'join' ? 'var(--primary)' : 'rgba(0,0,0,0.2)', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-            >
-              Join Room
+        <div className="dash-nav-right">
+          {isAdmin && (
+            <button className="btn-primary small" onClick={() => setShowCreate(true)}>
+              <Plus size={16} /> New Room
             </button>
-            <button 
-              onClick={() => { setActiveTab('create'); setError(''); }}
-              style={{ flex: 1, padding: '0.5rem', background: activeTab === 'create' ? 'var(--accent)' : 'rgba(0,0,0,0.2)', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-            >
-              Create New Room
-            </button>
+          )}
+          <div className="user-pill">
+            <div className="user-pill-avatar">{initials}</div>
+            <div className="user-pill-info">
+              <span className="user-pill-name">{user.name}</span>
+              <span className="user-pill-role">{isAdmin ? '👑 Admin' : user.designation}</span>
+            </div>
+          </div>
+          <button className="icon-btn" onClick={onLogout} title="Log out">
+            <LogOut size={18} />
+          </button>
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      <main className="dash-main">
+        <div className="dash-header">
+          <h1>Tracking Rooms</h1>
+          <p>Select a room to start live tracking with your team</p>
+        </div>
+
+        {loading ? (
+          <div className="dash-loading">
+            <Loader2 size={32} className="spin" />
+            <span>Loading rooms...</span>
+          </div>
+        ) : rooms.length === 0 ? (
+          <div className="dash-empty">
+            <Building2 size={48} opacity={0.3} />
+            <h3>No rooms yet</h3>
+            {isAdmin
+              ? <p>Create the first room for your team to join.</p>
+              : <p>Ask your admin to create a room and share the password with you.</p>
+            }
+            {isAdmin && (
+              <button className="btn-primary" onClick={() => setShowCreate(true)}>
+                <Plus size={16} /> Create First Room
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="room-grid">
+            {rooms.map(room => (
+              <div
+                key={room.roomId}
+                className={`room-card ${joiningRoomId === room.roomId ? 'active' : ''}`}
+                onClick={() => setJoiningRoomId(joiningRoomId === room.roomId ? null : room.roomId)}
+              >
+                <div className="room-card-top">
+                  <div className="room-icon">
+                    <Building2 size={22} />
+                  </div>
+                  <div className="room-info">
+                    <h3>{room.company || room.roomId}</h3>
+                    <span className="room-id">#{room.roomId}</span>
+                  </div>
+                  <ChevronRight size={18} className={`room-chevron ${joiningRoomId === room.roomId ? 'rotated' : ''}`} />
+                </div>
+
+                {joiningRoomId === room.roomId && (
+                  <div className="room-password-form" onClick={e => e.stopPropagation()}>
+                    <div className="input-group">
+                      <div className="password-input-wrap">
+                        <Lock size={16} className="input-icon" />
+                        <input
+                          className="form-input with-icon"
+                          type="password"
+                          placeholder="Enter room password"
+                          value={passwordInput[room.roomId] || ''}
+                          onChange={e => setPasswordInput(p => ({ ...p, [room.roomId]: e.target.value }))}
+                          onKeyDown={e => e.key === 'Enter' && handleJoin(room.roomId)}
+                          autoFocus
+                        />
+                      </div>
+                      {errors[room.roomId] && <div className="form-error small">{errors[room.roomId]}</div>}
+                    </div>
+                    <button className="btn-primary full" onClick={() => handleJoin(room.roomId)}>
+                      <Users size={16} /> Join Room
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
+      </main>
 
-        {error && <div className="error-message"><Lock size={16} /> {error}</div>}
-
-        <form onSubmit={handleSubmit}>
-          <div className="input-group">
-            <label>{activeTab === 'create' ? 'New Room ID' : 'Room ID'}</label>
-            <input 
-              type="text" name="roomId" className="input-field" 
-              placeholder="e.g. team-alpha-123" 
-              value={formData.roomId} onChange={handleChange}
-            />
+      {/* Create Room Modal */}
+      {showCreate && (
+        <div className="modal-overlay" onClick={() => setShowCreate(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Create New Room</h2>
+              <button className="icon-btn" onClick={() => setShowCreate(false)}>✕</button>
+            </div>
+            <form onSubmit={handleCreate} className="auth-form">
+              <div className="input-group">
+                <label>Company Name</label>
+                <input
+                  className="form-input"
+                  placeholder="e.g. Kafal Care"
+                  value={createForm.company}
+                  onChange={e => setCreateForm(f => ({ ...f, company: e.target.value }))}
+                />
+              </div>
+              <div className="input-group">
+                <label>Room ID <span className="required">*</span></label>
+                <input
+                  className="form-input"
+                  placeholder="e.g. kafal-care-2025"
+                  value={createForm.roomId}
+                  onChange={e => setCreateForm(f => ({ ...f, roomId: e.target.value.toLowerCase().replace(/\s+/g, '-') }))}
+                />
+                <span className="input-hint">Lowercase, no spaces. Share this with employees.</span>
+              </div>
+              <div className="input-group">
+                <label>Room Password <span className="required">*</span></label>
+                <input
+                  className="form-input"
+                  type="password"
+                  placeholder="Strong password"
+                  value={createForm.password}
+                  onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))}
+                />
+              </div>
+              {createError && <div className="form-error">{createError}</div>}
+              <button type="submit" className="btn-primary" disabled={createLoading}>
+                {createLoading ? <span className="btn-spinner"></span> : 'Create Room'}
+              </button>
+            </form>
           </div>
-
-          <div className="input-group" style={{ marginBottom: '2rem' }}>
-            <label>{activeTab === 'create' ? 'Set Room Password' : 'Room Password'}</label>
-            <input 
-              type="password" name="password" className="input-field" 
-              placeholder="Enter password" 
-              value={formData.password} onChange={handleChange}
-            />
-          </div>
-
-          <button type="submit" className="btn-primary" disabled={loading}>
-            {loading ? 'Connecting...' : (
-              <>
-                {activeTab === 'create' ? <PlusCircle size={20} /> : <LogIn size={20} />}
-                {activeTab === 'create' ? 'Create & Enter Room' : 'Access Tracking Room'}
-              </>
-            )}
-          </button>
-        </form>
-      </div>
+        </div>
+      )}
     </div>
   );
-};
-
-export default Dashboard;
+}

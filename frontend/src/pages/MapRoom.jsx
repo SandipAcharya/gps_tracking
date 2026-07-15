@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
-import { LogOut, Users, MapPin, Navigation, Signal, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LogOut, Navigation, Signal, ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
 import Map, { stringToColor } from '../components/Map';
 
-const MapRoom = ({ user, room, onLeaveRoom }) => {
+export default function MapRoom({ user, room, onLeaveRoom }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [users, setUsers] = useState([]);
+  const [roomUsers, setRoomUsers] = useState([]);
   const [myLocation, setMyLocation] = useState(null);
   const [focusLocation, setFocusLocation] = useState(null);
   const [socketConnected, setSocketConnected] = useState(false);
@@ -13,169 +13,146 @@ const MapRoom = ({ user, room, onLeaveRoom }) => {
   const watchIdRef = useRef(null);
 
   useEffect(() => {
-    // Connect to socket via Vite proxy
-    const socket = io();
+    const token = localStorage.getItem('geo_token');
+    const socket = io({ auth: { token } });
     socketRef.current = socket;
 
     socket.on('connect', () => {
       setSocketConnected(true);
-      socket.emit('join_room', { roomId: room.roomId, user: user });
-    });
-
-    socket.on('update_users', (updatedUsers) => {
-      setUsers(updatedUsers);
-    });
-
-    socket.on('disconnect', () => {
-      setSocketConnected(false);
-    });
-
-    // Start tracking location
-    if ('geolocation' in navigator) {
-      const handleSuccess = (position) => {
-        const { latitude, longitude } = position.coords;
-        const loc = { lat: latitude, lng: longitude };
-        setMyLocation(loc);
-        
-        if (socket.connected) {
-          socket.emit('update_location', { roomId: room.roomId, lat: latitude, lng: longitude });
+      socket.emit('join_room', {
+        roomId: room.roomId,
+        userProfile: {
+          name: user.name,
+          designation: user.designation,
+          email: user.email,
+          phone: user.phone
         }
-      };
-
-      const handleError = (error) => {
-        console.error("Error getting location:", error);
-        if (error.code === 1) {
-          alert("Location access denied. Please allow location permissions in your browser to be tracked.");
-        } else if (error.code === 3) {
-          console.warn("GPS timeout. Trying to fetch coarse location.");
-        } else if (error.code === 2) {
-          console.warn("Location unavailable. The device cannot determine your position.");
-        }
-      };
-
-      // Jumpstart location with a single quick fetch
-      navigator.geolocation.getCurrentPosition(handleSuccess, handleError, {
-        enableHighAccuracy: false, maximumAge: 60000, timeout: 10000
       });
+    });
 
-      // Then continuously watch
-      watchIdRef.current = navigator.geolocation.watchPosition(
-        handleSuccess,
-        handleError,
-        { enableHighAccuracy: false, maximumAge: 10000, timeout: 10000 }
-      );
+    socket.on('room_users', (users) => setRoomUsers(users));
+    socket.on('disconnect', () => setSocketConnected(false));
+
+    // Geolocation
+    if ('geolocation' in navigator) {
+      const onSuccess = (position) => {
+        const { latitude: lat, longitude: lng } = position.coords;
+        setMyLocation({ lat, lng });
+        if (socket.connected) {
+          socket.emit('update_location', { roomId: room.roomId, lat, lng });
+        }
+      };
+      const onError = (err) => {
+        if (err.code === 1) alert('Location access denied. Please allow location permissions.');
+      };
+      const opts = { enableHighAccuracy: false, maximumAge: 10000, timeout: 10000 };
+
+      navigator.geolocation.getCurrentPosition(onSuccess, onError, opts);
+      watchIdRef.current = navigator.geolocation.watchPosition(onSuccess, onError, opts);
     }
 
     return () => {
-      if (watchIdRef.current) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-      }
+      if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current);
       socket.disconnect();
     };
-  }, [user]);
+  }, []);
 
-  // Update location manually if socket wasn't ready during initial fetch
+  // Flush location once socket connects
   useEffect(() => {
     if (socketConnected && myLocation && socketRef.current) {
-      socketRef.current.emit('update_location', { 
-        roomId: room.roomId, 
-        lat: myLocation.lat, 
-        lng: myLocation.lng 
-      });
+      socketRef.current.emit('update_location', { roomId: room.roomId, lat: myLocation.lat, lng: myLocation.lng });
     }
-  }, [socketConnected, myLocation, room.roomId]);
+  }, [socketConnected]);
 
-  const activeUsersCount = users.filter(u => u.lat && u.lng).length;
+  const locatedCount = roomUsers.filter(u => u.lat && u.lng).length;
 
   return (
     <div className="map-layout">
       {/* Sidebar */}
       <div className={`sidebar ${!isSidebarOpen ? 'closed' : ''}`}>
-        
-        <button 
-          className="sidebar-toggle" 
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        >
-          {isSidebarOpen ? <ChevronLeft size={24} /> : <ChevronRight size={24} />}
+        <button className="sidebar-toggle" onClick={() => setIsSidebarOpen(o => !o)}>
+          {isSidebarOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
         </button>
 
+        {/* Header */}
         <div className="sidebar-header">
           <div>
-            <h2 style={{ fontSize: '1.2rem', marginBottom: '0.25rem' }}>Room: {room.roomId}</h2>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              <Signal size={12} color={socketConnected ? '#10b981' : '#ef4444'} />
-              {socketConnected ? 'Connected' : 'Reconnecting...'}
+            <div className="sidebar-room-badge">{room.company || room.roomId}</div>
+            <div className={`sidebar-conn ${socketConnected ? 'online' : 'offline'}`}>
+              <Signal size={11} /> {socketConnected ? 'Live' : 'Reconnecting...'}
             </div>
           </div>
-          <button 
-            onClick={onLeaveRoom}
-            style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0.5rem' }}
-            title="Leave Room"
-          >
-            <LogOut size={20} />
+          <button className="icon-btn danger" onClick={onLeaveRoom} title="Leave room">
+            <LogOut size={18} />
           </button>
         </div>
 
+        {/* Members List */}
         <div className="sidebar-content">
-          <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            <Users size={16} />
-            <span>Active Members ({activeUsersCount})</span>
+          <div className="sidebar-section-label">
+            <MapPin size={13} /> {locatedCount} of {roomUsers.length} located
           </div>
 
-          <div className="user-list">
-            {users.map((u) => {
+          <div className="member-list">
+            {roomUsers.map(u => {
               const isMe = u.email === user.email;
-              const avatarColor = isMe ? 'var(--accent)' : stringToColor(u.email);
-              
+              const color = isMe ? '#6366f1' : stringToColor(u.email);
+              const hasLocation = u.lat && u.lng;
+
               return (
-                <div 
-                  key={u.socketId} 
-                  className="user-item"
+                <div
+                  key={u.socketId}
+                  className={`member-item ${isMe ? 'me' : ''} ${hasLocation ? 'clickable' : ''}`}
                   onClick={() => {
-                    if (u.lat && u.lng) {
+                    if (hasLocation) {
                       setFocusLocation({ lat: u.lat, lng: u.lng });
                       if (window.innerWidth <= 768) setIsSidebarOpen(false);
                     }
                   }}
-                  style={{ cursor: (u.lat && u.lng) ? 'pointer' : 'default' }}
                 >
-                  <div className="user-avatar" style={{ backgroundColor: avatarColor, color: 'white' }}>
-                    {u.name ? u.name.charAt(0).toUpperCase() : u.email.charAt(0).toUpperCase()}
+                  <div className="member-avatar-wrap">
+                    <div className="member-avatar" style={{ background: color }}>
+                      {(u.name || u.email || '?').charAt(0).toUpperCase()}
+                    </div>
+                    <div className={`member-dot ${hasLocation ? 'active' : 'waiting'}`}></div>
                   </div>
-                  <div className="user-info">
-                    <h3>{isMe ? 'You' : u.name}</h3>
-                    {u.designation && <p style={{ fontSize: '0.7rem', color: 'gray', margin: 0 }}>{u.designation}</p>}
-                    <p>
-                      <span className="status-indicator" style={{ background: (u.lat && u.lng) ? '#10b981' : '#f59e0b' }}></span>
-                      {(u.lat && u.lng) ? 'Location Active' : 'Waiting for GPS...'}
-                    </p>
+                  <div className="member-details">
+                    <span className="member-name">{isMe ? `${u.name} (You)` : u.name}</span>
+                    <span className="member-desig">{u.designation}</span>
+                    <span className={`member-status ${hasLocation ? 'active' : 'waiting'}`}>
+                      {hasLocation ? '● Live' : '○ Waiting for GPS'}
+                    </span>
                   </div>
+                  {hasLocation && <ChevronRight size={14} className="member-arrow" />}
                 </div>
               );
             })}
-            {users.length === 0 && (
-              <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                No one else is here yet.
-              </div>
+
+            {roomUsers.length === 0 && (
+              <div className="member-empty">No one else has joined yet</div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Map Area */}
+      {/* Map */}
       <div className="map-container">
-        <div className="map-overlay">
-          <div className="hud-panel glass-panel">
-            <Navigation size={18} color="var(--primary)" />
-            <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>
-              {myLocation ? `${myLocation.lat.toFixed(4)}, ${myLocation.lng.toFixed(4)}` : 'Locating...'}
-            </span>
+        {/* HUD */}
+        <div className="map-hud">
+          <div className="hud-coords">
+            <Navigation size={14} />
+            {myLocation
+              ? `${myLocation.lat.toFixed(5)}, ${myLocation.lng.toFixed(5)}`
+              : 'Acquiring GPS...'}
           </div>
         </div>
-        <Map users={users} currentUserEmail={user.email} myLocation={myLocation} focusLocation={focusLocation} />
+        <Map
+          users={roomUsers}
+          currentUserEmail={user.email}
+          myLocation={myLocation}
+          focusLocation={focusLocation}
+        />
       </div>
     </div>
   );
-};
-
-export default MapRoom;
+}

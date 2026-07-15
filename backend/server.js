@@ -4,137 +4,96 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
 
-const Room = require('./models/Room');
+const authRoutes = require('./routes/auth');
+const roomRoutes = require('./routes/rooms');
 
 const app = express();
-app.use(cors());
-app.use(express.json());
-
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: "*", 
-    methods: ["GET", "POST"]
-  }
-});
 
+const JWT_SECRET = process.env.JWT_SECRET || 'dev_jwt_secret_change_in_prod';
+const CLIENT_URL = process.env.CLIENT_URL || '*';
 const PORT = process.env.PORT || 5000;
 
-// Connect to MongoDB
-const connectDB = async () => {
-  try {
-    const conn = await mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/geotracker');
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
-  } catch (error) {
-    console.error(`MongoDB Connection Error: ${error.message}`);
-    console.log("Please ensure MongoDB is running or MONGO_URI is set in .env");
-  }
-};
-connectDB();
+// ─── Middleware ───────────────────────────────────────
+app.use(cors({ origin: CLIENT_URL }));
+app.use(express.json());
 
-// Volatile in-memory store for active GPS tracking (Do NOT save coordinates to MongoDB every second)
+// ─── Routes ───────────────────────────────────────────
+app.get('/api/health', (_, res) => res.json({ status: 'ok' }));
+app.use('/api/auth', authRoutes);
+app.use('/api/rooms', roomRoutes);
+
+// ─── Socket.io ────────────────────────────────────────
+const io = new Server(server, {
+  cors: { origin: CLIENT_URL, methods: ['GET', 'POST'] }
+});
+
+// In-memory active tracking (GPS coords are transient — never stored in DB)
 const activeRooms = {};
 
-app.get('/', (req, res) => {
-  res.send('Geotracker API is running.');
-});
-
-// Join an existing room
-app.post('/api/room/join', async (req, res) => {
-  const { roomId, password } = req.body;
-  if (!roomId || !password) {
-    return res.status(400).json({ error: 'Room ID and password are required' });
-  }
-
+io.use((socket, next) => {
+  // Authenticate socket connections via JWT
+  const token = socket.handshake.auth?.token;
+  if (!token) return next(new Error('Authentication error'));
   try {
-    const room = await Room.findOne({ roomId });
-    if (!room) {
-      return res.status(404).json({ error: 'Room not found. Only admins can create new rooms.' });
-    }
-
-    if (room.password === password) {
-      // Ensure it exists in volatile memory for socket tracking
-      if (!activeRooms[roomId]) activeRooms[roomId] = { users: {} };
-      return res.status(200).json({ message: 'Joined room successfully' });
-    } else {
-      return res.status(401).json({ error: 'Incorrect room password' });
-    }
-  } catch (error) {
-    res.status(500).json({ error: 'Server error while joining room' });
+    socket.user = jwt.verify(token, JWT_SECRET);
+    next();
+  } catch {
+    next(new Error('Authentication error'));
   }
 });
 
-// Create a new room
-app.post('/api/room/create', async (req, res) => {
-  const { roomId, password, isAdmin, email } = req.body;
-  if (!roomId || !password) {
-    return res.status(400).json({ error: 'Room ID and password are required' });
-  }
-
-  if (!isAdmin) {
-    return res.status(403).json({ error: 'Permission denied. Only admins can create rooms.' });
-  }
-
-  try {
-    const existingRoom = await Room.findOne({ roomId });
-    if (existingRoom) {
-      return res.status(409).json({ error: 'Room already exists. Please choose a different ID.' });
-    }
-
-    const newRoom = await Room.create({
-      roomId,
-      password,
-      createdBy: email || 'admin'
-    });
-
-    // Initialize volatile memory
-    activeRooms[roomId] = { users: {} };
-
-    return res.status(201).json({ message: 'Room created successfully' });
-  } catch (error) {
-    res.status(500).json({ error: 'Server error while creating room' });
-  }
-});
-
-// Socket.io Tracking Engine
 io.on('connection', (socket) => {
-  console.log('A user connected:', socket.id);
+  console.log(`Socket connected: ${socket.id} | User: ${socket.user?.userId}`);
 
-  socket.on('join_room', ({ roomId, user }) => {
+  socket.on('join_room', ({ roomId, userProfile }) => {
     socket.join(roomId);
-    
-    if (!activeRooms[roomId]) {
-      activeRooms[roomId] = { users: {} };
-    }
+    if (!activeRooms[roomId]) activeRooms[roomId] = {};
 
-    activeRooms[roomId].users[socket.id] = { ...user, socketId: socket.id };
-    console.log(`User ${user.name || user.email} joined active tracking for room ${roomId}`);
-    
-    io.to(roomId).emit('update_users', Object.values(activeRooms[roomId].users));
+    activeRooms[roomId][socket.id] = {
+      socketId: socket.id,
+      userId: socket.user.userId,
+      name: userProfile.name,
+      designation: userProfile.designation,
+      email: userProfile.email,
+      phone: userProfile.phone,
+      lat: null,
+      lng: null
+    };
+
+    io.to(roomId).emit('room_users', Object.values(activeRooms[roomId]));
+    console.log(`${userProfile.name} joined room: ${roomId}`);
   });
 
   socket.on('update_location', ({ roomId, lat, lng }) => {
-    if (activeRooms[roomId] && activeRooms[roomId].users[socket.id]) {
-      activeRooms[roomId].users[socket.id].lat = lat;
-      activeRooms[roomId].users[socket.id].lng = lng;
-      
-      io.to(roomId).emit('update_users', Object.values(activeRooms[roomId].users));
+    if (activeRooms[roomId]?.[socket.id]) {
+      activeRooms[roomId][socket.id].lat = lat;
+      activeRooms[roomId][socket.id].lng = lng;
+      io.to(roomId).emit('room_users', Object.values(activeRooms[roomId]));
     }
   });
 
   socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
     for (const roomId in activeRooms) {
-      if (activeRooms[roomId].users && activeRooms[roomId].users[socket.id]) {
-        delete activeRooms[roomId].users[socket.id];
-        io.to(roomId).emit('update_users', Object.values(activeRooms[roomId].users));
+      if (activeRooms[roomId][socket.id]) {
+        delete activeRooms[roomId][socket.id];
+        io.to(roomId).emit('room_users', Object.values(activeRooms[roomId]));
+        console.log(`${socket.id} left room: ${roomId}`);
         break;
       }
     }
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
-});
+// ─── DB + Server Start ────────────────────────────────
+mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/geotracker')
+  .then(() => {
+    console.log('✅ MongoDB Connected');
+    server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+  })
+  .catch(err => {
+    console.error('❌ MongoDB connection failed:', err.message);
+    process.exit(1);
+  });
