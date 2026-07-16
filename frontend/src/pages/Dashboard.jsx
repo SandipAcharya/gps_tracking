@@ -234,15 +234,17 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
           <button onClick={onLogout} className="logout-btn">
             <LogOut size={16} /> Log Out
           </button>
-          <button
-            onClick={() => {
-              if (window.confirm('Switch to a different workspace? Your current session will end.'))
-                onUpdateUser({...user, activeOrganization: null, role: 'none'});
-            }}
-            style={{background:'none',border:'none',color:'var(--text-3)',fontSize:'0.78rem',cursor:'pointer',marginTop:'0.75rem',textDecoration:'underline'}}
-          >
-            Switch Workspace
-          </button>
+          {user.role === 'admin' && (
+            <button
+              onClick={() => {
+                if (window.confirm('Switch to a different workspace? Your current session will end.'))
+                  onUpdateUser({...user, activeOrganization: null, role: 'none'});
+              }}
+              style={{background:'none',border:'none',color:'var(--text-3)',fontSize:'0.78rem',cursor:'pointer',marginTop:'0.75rem',textDecoration:'underline'}}
+            >
+              Switch Workspace
+            </button>
+          )}
         </div>
       </aside>
 

@@ -7,13 +7,26 @@ const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_jwt_secret_change_in_prod';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'acharyasandip137@gmail.com';
 
-// Mailer Setup
+// Mailer Setup — use explicit SMTP instead of 'service: gmail' for reliability
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false, // use STARTTLS
   auth: {
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_APP_PASS
+  },
+  tls: { rejectUnauthorized: false }
+});
+
+// Verify mailer config on startup
+transporter.verify((error) => {
+  if (error) {
+    console.error('❌ Mailer config error:', error.message);
+  } else {
+    console.log('✅ Mailer ready — OTPs will be sent via', process.env.GMAIL_USER);
   }
 });
 
@@ -51,12 +64,19 @@ router.post('/register', async (req, res) => {
       await transporter.sendMail({
         from: `"Navigo Pro" <${process.env.GMAIL_USER}>`,
         to: user.email,
-        subject: 'Your Registration OTP - Navigo Pro',
-        html: `<h2>Welcome to Navigo Pro!</h2><p>Your verification code is: <strong>${otp}</strong></p>`
+        subject: 'Your Verification Code — Navigo Pro',
+        html: `
+          <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px;background:#f9fafb;border-radius:12px;">
+            <h2 style="color:#7c3aed;margin-bottom:8px;">Navigo Pro</h2>
+            <p style="margin-bottom:16px;">Hi ${user.name},</p>
+            <p>Your verification code is:</p>
+            <div style="font-size:2.5rem;font-weight:900;letter-spacing:12px;color:#1e1b4b;margin:20px 0;">${otp}</div>
+            <p style="font-size:0.85rem;color:#6b7280;">This code expires in 10 minutes. Do not share it with anyone.</p>
+          </div>`
       });
+      console.log('✅ OTP email sent to', user.email);
     } catch (e) {
-      console.log('Error sending mail. OTP is:', otp);
-      // In dev mode or if no env var, we don't crash, we just let them know the OTP is logged (or not)
+      console.error('❌ Mail send error:', e.message);
     }
 
     res.json({ message: 'OTP sent to your email.' });
@@ -77,6 +97,8 @@ router.post('/verify-otp', async (req, res) => {
 
     user.isVerified = true;
     user.otp = null;
+    // Auto-promote the designated admin email
+    if (user.email === ADMIN_EMAIL) user.role = 'admin';
     await user.save();
 
     const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '12h' });
