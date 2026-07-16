@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import api from '../utils/api';
+import { Link } from 'react-router-dom';
 import { Mail, Lock, Phone } from 'lucide-react';
 
 export default function Login({ onLogin }) {
@@ -100,6 +101,11 @@ export default function Login({ onLogin }) {
           
           <div className="bio-login-hint">
              Fingerprint & FaceID login will be enabled in the mobile app release.
+          </div>
+
+          <div style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.9rem' }}>
+            <span style={{color: 'var(--text-secondary)'}}>Don't have a workspace? </span>
+            <Link to="/register" style={{color: 'var(--primary)', textDecoration: 'none', fontWeight: '500'}}>Create one</Link>
           </div>
         </form>
       </div>

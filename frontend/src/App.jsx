@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
+import Register from './pages/Register';
+import Setup from './pages/Setup';
 import Profile from './pages/Profile';
 import Dashboard from './pages/Dashboard';
 import MapRoom from './pages/MapRoom';
@@ -73,6 +75,16 @@ function App() {
         <Route path="/" element={
           !user ? <Login onLogin={handleLogin} /> :
           !user.profileComplete ? <Navigate to="/profile" /> :
+          <Navigate to="/dashboard" />
+        } />
+
+        <Route path="/register" element={
+          !user ? <Register onLogin={handleLogin} /> :
+          <Navigate to="/dashboard" />
+        } />
+
+        <Route path="/setup" element={
+          !user ? <Setup onLogin={handleLogin} /> :
           <Navigate to="/dashboard" />
         } />
 
