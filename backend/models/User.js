@@ -10,7 +10,11 @@ const userSchema = new mongoose.Schema({
   
   // Organization Context
   activeOrganization: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', default: null },
-  role: { type: String, enum: ['admin', 'employee', 'none'], default: 'none' }
+  role: { type: String, enum: ['admin', 'employee', 'none'], default: 'none' },
+
+  // OTP Verification
+  otp: { type: String, default: null },
+  isVerified: { type: Boolean, default: false }
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);

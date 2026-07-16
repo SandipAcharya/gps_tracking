@@ -11,27 +11,45 @@ export default function Register({ onLogin }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const [step, setStep] = useState('form');
+
   const handleChange = (key, val) => setForm(f => ({ ...f, [key]: val }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.name || !form.email || !form.phone || !form.password || !form.designation || !form.department) {
-      return setError('Please fill in all required fields.');
-    }
-    setLoading(true);
-    setError('');
-    
-    try {
-      const data = await api('/api/auth/register', {
-        method: 'POST',
-        body: JSON.stringify(form)
-      });
-      onLogin(data.token, data.user);
-      navigate('/dashboard');
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+    if (step === 'form') {
+      if (!form.name || !form.email || !form.phone || !form.password || !form.designation || !form.department) {
+        return setError('Please fill in all required fields.');
+      }
+      setLoading(true);
+      setError('');
+      try {
+        const res = await api('/api/auth/register', {
+          method: 'POST',
+          body: JSON.stringify(form)
+        });
+        setStep('otp');
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      if (!form.otp) return setError('Please enter the OTP.');
+      setLoading(true);
+      setError('');
+      try {
+        const data = await api('/api/auth/verify-otp', {
+          method: 'POST',
+          body: JSON.stringify({ email: form.email, otp: form.otp })
+        });
+        onLogin(data.token, data.user);
+        navigate('/dashboard');
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -52,103 +70,80 @@ export default function Register({ onLogin }) {
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
-          <div className="form-header">
-            <h2>Sign Up</h2>
-            <p>Register your personal profile. You will join your company workspace next.</p>
-          </div>
+          {step === 'form' ? (
+            <>
+              <div className="form-header">
+                <h2>Sign Up</h2>
+                <p>Register your personal profile. You will join your company workspace next.</p>
+              </div>
 
-          <div className="form-row">
-            <div className="input-group">
-              <label>Full Name <span className="required">*</span></label>
-              <div className="input-icon-wrapper">
-                <User className="input-icon" size={18} />
-                <input
-                  type="text"
-                  className="form-input with-icon"
-                  placeholder="Sandip Acharya"
-                  value={form.name}
-                  onChange={e => handleChange('name', e.target.value)}
-                  autoFocus
-                />
+              <div className="form-row">
+                <div className="input-group">
+                  <label>Full Name <span className="required">*</span></label>
+                  <div className="input-icon-wrapper">
+                    <User className="input-icon" size={18} />
+                    <input type="text" className="form-input with-icon" placeholder="Sandip Acharya" value={form.name} onChange={e => handleChange('name', e.target.value)} autoFocus />
+                  </div>
+                </div>
+                <div className="input-group">
+                  <label>Email Address <span className="required">*</span></label>
+                  <div className="input-icon-wrapper">
+                    <Mail className="input-icon" size={18} />
+                    <input type="email" className="form-input with-icon" placeholder="me@company.com" value={form.email} onChange={e => handleChange('email', e.target.value)} />
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="input-group">
-              <label>Email Address <span className="required">*</span></label>
-              <div className="input-icon-wrapper">
-                <Mail className="input-icon" size={18} />
-                <input
-                  type="email"
-                  className="form-input with-icon"
-                  placeholder="me@company.com"
-                  value={form.email}
-                  onChange={e => handleChange('email', e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
 
-          <div className="form-row">
-            <div className="input-group">
-              <label>Phone Number <span className="required">*</span></label>
-              <div className="input-icon-wrapper">
-                <Phone className="input-icon" size={18} />
-                <input
-                  type="tel"
-                  className="form-input with-icon"
-                  placeholder="+977 98XXXXXXXX"
-                  value={form.phone}
-                  onChange={e => handleChange('phone', e.target.value)}
-                />
+              <div className="form-row">
+                <div className="input-group">
+                  <label>Phone Number <span className="required">*</span></label>
+                  <div className="input-icon-wrapper">
+                    <Phone className="input-icon" size={18} />
+                    <input type="tel" className="form-input with-icon" placeholder="+977 98XXXXXXXX" value={form.phone} onChange={e => handleChange('phone', e.target.value)} />
+                  </div>
+                </div>
+                <div className="input-group">
+                  <label>Password <span className="required">*</span></label>
+                  <div className="input-icon-wrapper">
+                    <Lock className="input-icon" size={18} />
+                    <input type="password" className="form-input with-icon" placeholder="••••••••" value={form.password} onChange={e => handleChange('password', e.target.value)} />
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="input-group">
-              <label>Password <span className="required">*</span></label>
-              <div className="input-icon-wrapper">
-                <Lock className="input-icon" size={18} />
-                <input
-                  type="password"
-                  className="form-input with-icon"
-                  placeholder="••••••••"
-                  value={form.password}
-                  onChange={e => handleChange('password', e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
 
-          <div className="form-row">
-            <div className="input-group">
-              <label>Designation <span className="required">*</span></label>
-              <div className="input-icon-wrapper">
-                <Briefcase className="input-icon" size={18} />
-                <input
-                  type="text"
-                  className="form-input with-icon"
-                  placeholder="Field Agent"
-                  value={form.designation}
-                  onChange={e => handleChange('designation', e.target.value)}
-                />
+              <div className="form-row">
+                <div className="input-group">
+                  <label>Designation <span className="required">*</span></label>
+                  <div className="input-icon-wrapper">
+                    <Briefcase className="input-icon" size={18} />
+                    <input type="text" className="form-input with-icon" placeholder="Field Agent" value={form.designation} onChange={e => handleChange('designation', e.target.value)} />
+                  </div>
+                </div>
+                <div className="input-group">
+                  <label>Department <span className="required">*</span></label>
+                  <div className="input-icon-wrapper">
+                    <Building2 className="input-icon" size={18} />
+                    <input type="text" className="form-input with-icon" placeholder="Sales" value={form.department} onChange={e => handleChange('department', e.target.value)} />
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="input-group">
-              <label>Department <span className="required">*</span></label>
-              <div className="input-icon-wrapper">
-                <Building2 className="input-icon" size={18} />
-                <input
-                  type="text"
-                  className="form-input with-icon"
-                  placeholder="Sales"
-                  value={form.department}
-                  onChange={e => handleChange('department', e.target.value)}
-                />
+            </>
+          ) : (
+            <>
+              <div className="form-header">
+                <h2>Verify Email</h2>
+                <p>We've sent a 6-digit OTP to <strong>{form.email}</strong>. Please enter it below.</p>
               </div>
-            </div>
-          </div>
+              <div className="input-group" style={{alignItems: 'center'}}>
+                <input type="text" className="form-input" style={{textAlign: 'center', letterSpacing: '8px', fontSize: '1.5rem', fontWeight: 700}} placeholder="000000" maxLength={6} value={form.otp || ''} onChange={e => handleChange('otp', e.target.value)} autoFocus />
+              </div>
+            </>
+          )}
 
           {error && <div className="form-error">{error}</div>}
 
           <button type="submit" className="btn-primary" disabled={loading} style={{marginTop: '1rem'}}>
-            {loading ? <span className="btn-spinner"></span> : 'Create Profile'}
+            {loading ? <span className="btn-spinner"></span> : (step === 'form' ? 'Create Profile' : 'Verify & Continue')}
           </button>
 
           <div style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.9rem' }}>

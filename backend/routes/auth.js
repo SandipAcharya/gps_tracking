@@ -4,8 +4,18 @@ const User = require('../models/User');
 const Organization = require('../models/Organization');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const nodemailer = require('nodemailer');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_jwt_secret_change_in_prod';
+
+// Mailer Setup
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASS
+  }
+});
 
 // 1. User Registration
 router.post('/register', async (req, res) => {
@@ -17,18 +27,63 @@ router.post('/register', async (req, res) => {
     }
 
     let user = await User.findOne({ email: email.toLowerCase() });
-    if (user) return res.status(400).json({ error: 'Email already registered.' });
+    if (user && user.isVerified) return res.status(400).json({ error: 'Email already registered.' });
 
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const hashedPassword = await bcrypt.hash(password, 10);
-    user = await User.create({
-      name, email: email.toLowerCase(), phone, password: hashedPassword, designation, department
-    });
+    
+    if (user && !user.isVerified) {
+      // Update existing unverified user
+      user.name = name;
+      user.phone = phone;
+      user.password = hashedPassword;
+      user.designation = designation;
+      user.department = department;
+      user.otp = otp;
+      await user.save();
+    } else {
+      user = await User.create({
+        name, email: email.toLowerCase(), phone, password: hashedPassword, designation, department, otp, isVerified: false
+      });
+    }
 
-    const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '12h' });
-    res.json({ token, user: { id: user._id, name, email, phone, role: 'none', activeOrganization: null } });
+    try {
+      await transporter.sendMail({
+        from: `"Navigo Pro" <${process.env.GMAIL_USER}>`,
+        to: user.email,
+        subject: 'Your Registration OTP - Navigo Pro',
+        html: `<h2>Welcome to Navigo Pro!</h2><p>Your verification code is: <strong>${otp}</strong></p>`
+      });
+    } catch (e) {
+      console.log('Error sending mail. OTP is:', otp);
+      // In dev mode or if no env var, we don't crash, we just let them know the OTP is logged (or not)
+    }
+
+    res.json({ message: 'OTP sent to your email.' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Registration failed.' });
+  }
+});
+
+// 1.5 Verify OTP
+router.post('/verify-otp', async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    const user = await User.findOne({ email: email.toLowerCase() });
+    
+    if (!user) return res.status(404).json({ error: 'User not found.' });
+    if (user.otp !== otp) return res.status(400).json({ error: 'Invalid OTP.' });
+
+    user.isVerified = true;
+    user.otp = null;
+    await user.save();
+
+    const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '12h' });
+    res.json({ token, user: { id: user._id, name: user.name, email: user.email, phone: user.phone, role: user.role, activeOrganization: null } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Verification failed.' });
   }
 });
 
@@ -47,6 +102,8 @@ router.post('/login', async (req, res) => {
 
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(400).json({ error: 'Invalid credentials.' });
+
+    if (!user.isVerified) return res.status(401).json({ error: 'Please verify your email first.' });
 
     const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '12h' });
     

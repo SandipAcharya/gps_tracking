@@ -54,7 +54,7 @@ export default function Login({ onLogin }) {
 
         <form onSubmit={handleLogin} className="auth-form">
           <div className="form-header">
-            <h2>Welcome back</h2>
+            <h2>Welcome</h2>
             <p>Log in to access your organization workspace</p>
           </div>
 

@@ -13,6 +13,7 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
   const [orgForm, setOrgForm] = useState({ name: '', password: '' });
   const [orgLoading, setOrgLoading] = useState(false);
   const [orgError, setOrgError] = useState('');
+  const [focusLocation, setFocusLocation] = useState(null);
 
   const socketRef = useRef(null);
   const watchIdRef = useRef(null);
@@ -184,24 +185,35 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
         </div>
 
         <div className="sidebar-content">
-          <div className="clock-in-section" style={{marginBottom: '2rem'}}>
-            <button 
-              className={`clock-btn ${isClockedIn ? 'clocked-out' : 'clocked-in'}`}
-              onClick={toggleClock}
-            >
-              {isClockedIn ? (
-                <><Square size={20} fill="currentColor"/> STOP TRACKING</>
-              ) : (
-                <><Play size={20} fill="currentColor"/> CLOCK IN TO SHIFT</>
-              )}
-            </button>
-          </div>
+          {user.role === 'employee' && (
+            <div className="clock-in-section" style={{marginBottom: '2rem'}}>
+              <button 
+                className={`clock-btn ${isClockedIn ? 'clocked-out' : 'clocked-in'}`}
+                onClick={toggleClock}
+              >
+                {isClockedIn ? (
+                  <><Square size={20} fill="currentColor"/> STOP TRACKING</>
+                ) : (
+                  <><Play size={20} fill="currentColor"/> CLOCK IN TO SHIFT</>
+                )}
+              </button>
+            </div>
+          )}
           
           <div className="active-users-list">
             <h3 className="section-title">Active Fleet ({activeUsers.filter(u => u.lat).length})</h3>
             <div className="users-scroll">
               {activeUsers.map(u => (
-                <div key={u.socketId} className="user-item">
+                <div 
+                  key={u.socketId} 
+                  className="user-item" 
+                  style={{cursor: u.lat ? 'pointer' : 'default'}}
+                  onClick={() => {
+                    if (u.lat && u.lng) {
+                      setFocusLocation({ lat: u.lat, lng: u.lng });
+                    }
+                  }}
+                >
                   <div className={`status-dot ${u.lat ? 'active' : 'idle'}`}></div>
                   <div className="user-details">
                     <span className="user-name">{u.name} {u.userId === user.id ? '(You)' : ''}</span>
@@ -234,7 +246,7 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
             ☰ Menu
           </button>
         )}
-        <Map users={activeUsers.filter(u => u.lat && u.lng)} currentUserId={user.id} />
+        <Map users={activeUsers.filter(u => u.lat && u.lng)} currentUserId={user.id} focusLocation={focusLocation} />
       </main>
     </div>
   );
