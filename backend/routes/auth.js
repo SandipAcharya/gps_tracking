@@ -4,29 +4,30 @@ const User = require('../models/User');
 const Organization = require('../models/Organization');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { Resend } = require('resend');
+const Brevo = require('@getbrevo/brevo');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_jwt_secret_change_in_prod';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'acharyasandip137@gmail.com';
 
-// Resend email client — uses HTTPS not SMTP, works on Render
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Brevo (Sendinblue) email client — HTTP API, works on Render
+const brevoClient = new Brevo.TransactionalEmailsApi();
+brevoClient.setApiKey(Brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY || '');
 
 const sendOtpEmail = async (toEmail, toName, otp) => {
-  const { error } = await resend.emails.send({
-    from: 'Navigo Pro <onboarding@resend.dev>',
-    to: toEmail,
-    subject: 'Your Verification Code — Navigo Pro',
-    html: `
-      <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:32px;background:#f9fafb;border-radius:12px;">
-        <h2 style="color:#7c3aed;margin:0 0 8px;">Navigo Pro</h2>
-        <p style="color:#374151;">Hi ${toName},</p>
-        <p style="color:#374151;">Your verification code is:</p>
-        <div style="font-size:2.8rem;font-weight:900;letter-spacing:16px;color:#1e1b4b;margin:24px 0;text-align:center;">${otp}</div>
-        <p style="font-size:0.85rem;color:#6b7280;">This code expires in 10 minutes. Do not share it with anyone.</p>
-      </div>`
-  });
-  if (error) throw new Error(error.message);
+  const sendSmtpEmail = new Brevo.SendSmtpEmail();
+  sendSmtpEmail.sender = { name: 'Navigo Pro', email: process.env.BREVO_SENDER_EMAIL || 'acharyasandip137@gmail.com' };
+  sendSmtpEmail.to = [{ email: toEmail, name: toName }];
+  sendSmtpEmail.subject = 'Your Verification Code — Navigo Pro';
+  sendSmtpEmail.htmlContent = `
+    <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:32px;background:#f9fafb;border-radius:12px;">
+      <h2 style="color:#7c3aed;margin:0 0 8px;">Navigo Pro</h2>
+      <p style="color:#374151;">Hi ${toName},</p>
+      <p style="color:#374151;">Your verification code is:</p>
+      <div style="font-size:2.8rem;font-weight:900;letter-spacing:16px;color:#1e1b4b;margin:24px 0;text-align:center;">${otp}</div>
+      <p style="font-size:0.85rem;color:#6b7280;">This code expires in 10 minutes. Do not share it.</p>
+    </div>`;
+  const result = await brevoClient.sendTransacEmail(sendSmtpEmail);
+  return result;
 };
 
 // 1. User Registration
@@ -132,7 +133,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// 3. Create Organization (Admin)
+// 3. Create Organization (Admin only)
 router.post('/org/create', async (req, res) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) return res.status(401).json({ error: 'Unauthorized.' });
@@ -140,6 +141,10 @@ router.post('/org/create', async (req, res) => {
   try {
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, JWT_SECRET);
+    
+    const user = await User.findById(decoded.userId);
+    if (!user) return res.status(404).json({ error: 'User not found.' });
+    if (user.role !== 'admin') return res.status(403).json({ error: 'Only admins can create a workspace.' });
     
     const { name, password } = req.body;
     if (!name || !password) return res.status(400).json({ error: 'Org name and password required.' });

@@ -1,42 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
-
-// ─── Color Helper ─────────────────────────────────────
-export const stringToColor = (str = '') => {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
-  return '#' + '000000'.substring(0, 6 - c.length) + c;
-};
-
-// ─── Role-based Marker Colors ────────────────────────
-const ROLE_COLORS = {
-  admin: '#7c3aed',     // Brand purple for admin
-  me:    '#2563eb',     // Blue for yourself
-  employee: null,       // Generated from name hash for employees
-};
-
-// Employee palette — vibrant, distinct colors
-const EMPLOYEE_PALETTE = [
-  '#e11d48', '#0891b2', '#16a34a', '#ea580c',
-  '#7c3aed', '#be185d', '#0284c7', '#dc2626',
-  '#059669', '#d97706'
-];
-
-const getEmployeeColor = (name = '') => {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return EMPLOYEE_PALETTE[Math.abs(hash) % EMPLOYEE_PALETTE.length];
-};
+import { getUserColor, getEmployeeColor } from '../utils/colors';
 
 // ─── Custom Marker Icon ───────────────────────────────
 const createCustomIcon = (role, isMe, name) => {
-  let color;
-  if (isMe) color = ROLE_COLORS.me;
-  else if (role === 'admin') color = ROLE_COLORS.admin;
-  else color = getEmployeeColor(name);
-
+  const color = getUserColor(role, name, isMe);
   const ring = isMe ? '3px solid white' : role === 'admin' ? '3px solid #c4b5fd' : '2px solid white';
   const size = role === 'admin' ? 22 : 18;
 
@@ -125,7 +94,7 @@ const Map = ({ users, currentUserEmail, myLocation, focusLocation }) => {
             <Popup>
               <div style={{ minWidth: 140 }}>
                 <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'4px'}}>
-                  <div style={{width:10,height:10,borderRadius:'50%',background: u.role==='admin' ? '#7c3aed' : getEmployeeColor(u.name),flexShrink:0}}></div>
+                  <div style={{width:10,height:10,borderRadius:'50%',background: getUserColor(u.role, u.name),flexShrink:0}}></div>
                   <strong>{u.name}</strong>
                   {u.role === 'admin' && <span style={{fontSize:'0.65rem',background:'#ede9fe',color:'#7c3aed',padding:'1px 6px',borderRadius:'99px',fontWeight:700}}>ADMIN</span>}
                 </div>

@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import Map from '../components/Map';
 import api, { BASE_URL } from '../utils/api';
-import { LogOut, Play, Square, Users, Building2, Key } from 'lucide-react';
+import { getUserColor } from '../utils/colors';
+import { LogOut, Play, Square, Building2, Key } from 'lucide-react';
 
 export default function Dashboard({ user, onLogout, onUpdateUser }) {
   const [activeUsers, setActiveUsers] = useState([]);
@@ -206,23 +207,29 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
           )}
           
           <div className="active-users-list">
-            <h3 className="section-title">Active Fleet ({activeUsers.filter(u => u.lat).length})</h3>
+            <h3 className="section-title">Active Fleet ({activeUsers.filter(u => u.lat).length}/{activeUsers.length})</h3>
             <div className="users-scroll">
               {activeUsers.map(u => (
                 <div 
                   key={u.socketId} 
                   className="user-item" 
                   style={{cursor: u.lat ? 'pointer' : 'default'}}
-                  onClick={() => {
-                    if (u.lat && u.lng) {
-                      setFocusLocation({ lat: u.lat, lng: u.lng });
-                    }
-                  }}
+                  onClick={() => { if (u.lat && u.lng) setFocusLocation({ lat: u.lat, lng: u.lng }); }}
                 >
-                  <div className={`status-dot ${u.lat ? 'active' : 'idle'}`}></div>
-                  <div className="user-details">
-                    <span className="user-name">{u.name}</span>
-                    <span className="user-role">{u.designation || u.role}</span>
+                  <div style={{
+                    width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
+                    background: getUserColor(u.role, u.name),
+                    boxShadow: u.lat ? `0 0 6px ${getUserColor(u.role, u.name)}` : 'none',
+                    opacity: u.lat ? 1 : 0.35
+                  }}></div>
+                  <div className="user-details" style={{flex:1}}>
+                    <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
+                      <span className="user-name">{u.name}</span>
+                      {u.role === 'admin' && (
+                        <span style={{fontSize:'0.6rem',background:'#ede9fe',color:'#7c3aed',padding:'1px 5px',borderRadius:'99px',fontWeight:700,letterSpacing:'0.03em'}}>ADMIN</span>
+                      )}
+                    </div>
+                    <span className="user-role">{u.lat ? u.designation || u.role : 'Offline'}</span>
                   </div>
                 </div>
               ))}
