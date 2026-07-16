@@ -8,24 +8,31 @@ const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_jwt_secret_change_in_prod';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'acharyasandip137@gmail.com';
 
-// Uses Node 18+ native fetch — no SDK, no SMTP, works on Render
+// SendGrid REST API — DKIM-signed, works on Render, Gmail accepts it
 const sendOtpEmail = async (toEmail, toName, otp) => {
-  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+  const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'api-key': process.env.BREVO_API_KEY || ''
+      'Authorization': `Bearer ${process.env.SENDGRID_API_KEY || ''}`
     },
     body: JSON.stringify({
-      sender: { name: 'Navigo Pro', email: process.env.BREVO_SENDER_EMAIL || 'acharyasandip137@gmail.com' },
-      to: [{ email: toEmail, name: toName }],
+      personalizations: [{ to: [{ email: toEmail, name: toName }] }],
+      from: {
+        email: process.env.SENDGRID_FROM_EMAIL || 'acharyasandip137@gmail.com',
+        name: 'Navigo Pro'
+      },
       subject: 'Your Verification Code — Navigo Pro',
-      htmlContent: `<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:32px;background:#f9fafb;border-radius:12px;"><h2 style="color:#7c3aed;">Navigo Pro</h2><p>Hi ${toName},</p><p>Your verification code is:</p><div style="font-size:2.8rem;font-weight:900;letter-spacing:16px;color:#1e1b4b;margin:24px 0;text-align:center;">${otp}</div><p style="font-size:0.85rem;color:#6b7280;">This code expires in 10 minutes.</p></div>`
+      content: [{
+        type: 'text/html',
+        value: `<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:32px;background:#f9fafb;border-radius:12px;"><h2 style="color:#7c3aed;">Navigo Pro</h2><p>Hi ${toName},</p><p>Your verification code is:</p><div style="font-size:2.8rem;font-weight:900;letter-spacing:16px;color:#1e1b4b;margin:24px 0;text-align:center;">${otp}</div><p style="font-size:0.85rem;color:#6b7280;">This code expires in 10 minutes. Do not share it.</p></div>`
+      }]
     })
   });
-  if (!res.ok) {
-    const errBody = await res.json();
-    throw new Error(errBody.message || `Brevo API error ${res.status}`);
+  // SendGrid returns 202 Accepted on success (no body)
+  if (res.status !== 202) {
+    const errBody = await res.json().catch(() => ({}));
+    throw new Error(JSON.stringify(errBody.errors || errBody) || `SendGrid error ${res.status}`);
   }
 };
 
