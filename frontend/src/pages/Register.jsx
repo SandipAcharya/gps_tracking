@@ -1,16 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../utils/api';
-import { Building2, User, Mail, Lock, Phone } from 'lucide-react';
+import { Building2, User, Mail, Lock, Phone, Briefcase } from 'lucide-react';
 
 export default function Register({ onLogin }) {
   const navigate = useNavigate();
   const [form, setForm] = useState({
-    organization: '',
-    name: '',
-    email: '',
-    phone: '',
-    password: ''
+    name: '', email: '', phone: '', password: '', designation: '', department: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -19,7 +15,7 @@ export default function Register({ onLogin }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.organization || !form.name || !form.email || !form.password) {
+    if (!form.name || !form.email || !form.phone || !form.password || !form.designation || !form.department) {
       return setError('Please fill in all required fields.');
     }
     setLoading(true);
@@ -51,33 +47,19 @@ export default function Register({ onLogin }) {
           </div>
           <div>
             <h1 className="logo-name" style={{letterSpacing: '1px'}}>NAVIGO PRO</h1>
-            <p className="logo-tagline" style={{letterSpacing: '3px', textTransform: 'uppercase', fontSize: '0.7rem'}}>Move Sharp</p>
+            <p className="logo-tagline" style={{letterSpacing: '3px', textTransform: 'uppercase', fontSize: '0.7rem'}}>Create Your Profile</p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-header">
-            <h2>Create Workspace</h2>
-            <p>Set up your organization to start tracking your fleet</p>
+            <h2>Sign Up</h2>
+            <p>Register your personal profile. You will join your company workspace next.</p>
           </div>
 
           <div className="form-row">
             <div className="input-group">
-              <label>Organization Name <span className="required">*</span></label>
-              <div className="input-icon-wrapper">
-                <Building2 className="input-icon" size={18} />
-                <input
-                  type="text"
-                  className="form-input with-icon"
-                  placeholder="Kafal Care"
-                  value={form.organization}
-                  onChange={e => handleChange('organization', e.target.value)}
-                  autoFocus
-                />
-              </div>
-            </div>
-            <div className="input-group">
-              <label>Your Name <span className="required">*</span></label>
+              <label>Full Name <span className="required">*</span></label>
               <div className="input-icon-wrapper">
                 <User className="input-icon" size={18} />
                 <input
@@ -86,12 +68,10 @@ export default function Register({ onLogin }) {
                   placeholder="Sandip Acharya"
                   value={form.name}
                   onChange={e => handleChange('name', e.target.value)}
+                  autoFocus
                 />
               </div>
             </div>
-          </div>
-
-          <div className="form-row">
             <div className="input-group">
               <label>Email Address <span className="required">*</span></label>
               <div className="input-icon-wrapper">
@@ -99,14 +79,17 @@ export default function Register({ onLogin }) {
                 <input
                   type="email"
                   className="form-input with-icon"
-                  placeholder="admin@company.com"
+                  placeholder="me@company.com"
                   value={form.email}
                   onChange={e => handleChange('email', e.target.value)}
                 />
               </div>
             </div>
+          </div>
+
+          <div className="form-row">
             <div className="input-group">
-              <label>Phone Number</label>
+              <label>Phone Number <span className="required">*</span></label>
               <div className="input-icon-wrapper">
                 <Phone className="input-icon" size={18} />
                 <input
@@ -118,26 +101,54 @@ export default function Register({ onLogin }) {
                 />
               </div>
             </div>
+            <div className="input-group">
+              <label>Password <span className="required">*</span></label>
+              <div className="input-icon-wrapper">
+                <Lock className="input-icon" size={18} />
+                <input
+                  type="password"
+                  className="form-input with-icon"
+                  placeholder="••••••••"
+                  value={form.password}
+                  onChange={e => handleChange('password', e.target.value)}
+                />
+              </div>
+            </div>
           </div>
 
-          <div className="input-group">
-            <label>Password <span className="required">*</span></label>
-            <div className="input-icon-wrapper">
-              <Lock className="input-icon" size={18} />
-              <input
-                type="password"
-                className="form-input with-icon"
-                placeholder="••••••••"
-                value={form.password}
-                onChange={e => handleChange('password', e.target.value)}
-              />
+          <div className="form-row">
+            <div className="input-group">
+              <label>Designation <span className="required">*</span></label>
+              <div className="input-icon-wrapper">
+                <Briefcase className="input-icon" size={18} />
+                <input
+                  type="text"
+                  className="form-input with-icon"
+                  placeholder="Field Agent"
+                  value={form.designation}
+                  onChange={e => handleChange('designation', e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="input-group">
+              <label>Department <span className="required">*</span></label>
+              <div className="input-icon-wrapper">
+                <Building2 className="input-icon" size={18} />
+                <input
+                  type="text"
+                  className="form-input with-icon"
+                  placeholder="Sales"
+                  value={form.department}
+                  onChange={e => handleChange('department', e.target.value)}
+                />
+              </div>
             </div>
           </div>
 
           {error && <div className="form-error">{error}</div>}
 
           <button type="submit" className="btn-primary" disabled={loading} style={{marginTop: '1rem'}}>
-            {loading ? <span className="btn-spinner"></span> : 'Create Organization'}
+            {loading ? <span className="btn-spinner"></span> : 'Create Profile'}
           </button>
 
           <div style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.9rem' }}>

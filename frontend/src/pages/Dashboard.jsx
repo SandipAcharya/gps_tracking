@@ -2,19 +2,24 @@ import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import Map from '../components/Map';
 import api, { BASE_URL } from '../utils/api';
-import { LogOut, UserPlus, Play, Square, Users } from 'lucide-react';
+import { LogOut, Play, Square, Users, Building2, Key } from 'lucide-react';
 
-export default function Dashboard({ user, onLogout }) {
+export default function Dashboard({ user, onLogout, onUpdateUser }) {
   const [activeUsers, setActiveUsers] = useState([]);
   const [isClockedIn, setIsClockedIn] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteMsg, setInviteMsg] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
+  // Org Selection State
+  const [orgForm, setOrgForm] = useState({ name: '', password: '' });
+  const [orgLoading, setOrgLoading] = useState(false);
+  const [orgError, setOrgError] = useState('');
+
   const socketRef = useRef(null);
   const watchIdRef = useRef(null);
 
   useEffect(() => {
+    if (!user.activeOrganization) return;
+
     const token = localStorage.getItem('geo_token');
     
     // Connect to Socket
@@ -22,17 +27,15 @@ export default function Dashboard({ user, onLogout }) {
     
     socketRef.current.on('connect', () => {
       socketRef.current.emit('join_org', { 
-        organization: user.organization, 
+        organization: user.activeOrganization, 
         userProfile: user 
       });
     });
 
     socketRef.current.on('org_users', (users) => {
-      // Deduplicate users (only keep the latest socket for each user)
       const uniqueUsersMap = new window.Map();
       users.forEach(u => {
         const key = u.userId || u.email || u.phone;
-        // Prefer entries with location
         if (!uniqueUsersMap.has(key) || (u.lat && u.lng)) {
           uniqueUsersMap.set(key, u);
         }
@@ -44,9 +47,26 @@ export default function Dashboard({ user, onLogout }) {
       if (socketRef.current) socketRef.current.disconnect();
       if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current);
     };
-  }, [user]);
+  }, [user.activeOrganization]);
 
-  // Handle Clock In / Out
+  const handleJoinOrCreateOrg = async (action) => {
+    if (!orgForm.name || !orgForm.password) return setOrgError('Please enter Workspace Name and Password');
+    setOrgLoading(true);
+    setOrgError('');
+    try {
+      const endpoint = action === 'create' ? '/api/auth/org/create' : '/api/auth/org/join';
+      const data = await api(endpoint, {
+        method: 'POST',
+        body: JSON.stringify(orgForm)
+      });
+      onUpdateUser(data.user);
+    } catch (err) {
+      setOrgError(err.message);
+    } finally {
+      setOrgLoading(false);
+    }
+  };
+
   const toggleClock = () => {
     if (!isClockedIn) {
       if ('geolocation' in navigator) {
@@ -55,7 +75,7 @@ export default function Dashboard({ user, onLogout }) {
           (pos) => {
             const { latitude, longitude } = pos.coords;
             socketRef.current.emit('update_location', { 
-              organization: user.organization, 
+              organization: user.activeOrganization, 
               lat: latitude, 
               lng: longitude 
             });
@@ -71,39 +91,74 @@ export default function Dashboard({ user, onLogout }) {
         alert('Geolocation is not supported by your browser.');
       }
     } else {
-      // Clock Out
       setIsClockedIn(false);
       if (watchIdRef.current) {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
       }
       socketRef.current.emit('update_location', { 
-        organization: user.organization, 
+        organization: user.activeOrganization, 
         lat: null, 
         lng: null 
       });
     }
   };
 
-  const handleInvite = async (e) => {
-    e.preventDefault();
-    if (!inviteEmail) return;
-    try {
-      const data = await api('/api/auth/invite', {
-        method: 'POST',
-        body: JSON.stringify({ email: inviteEmail })
-      });
-      setInviteMsg('Invite sent successfully!');
-      setInviteEmail('');
-      setTimeout(() => setInviteMsg(''), 3000);
-    } catch (err) {
-      setInviteMsg(err.message);
-    }
-  };
+  if (!user.activeOrganization) {
+    return (
+      <div className="auth-bg">
+        <div className="auth-card wide">
+          <div className="form-header" style={{textAlign: 'center', marginBottom: '2rem'}}>
+            <h2>Welcome, {user.name}</h2>
+            <p>Join an existing company workspace or create a new one.</p>
+          </div>
+          
+          <div className="input-group" style={{marginBottom: '1rem'}}>
+            <label>Workspace Name</label>
+            <div className="input-icon-wrapper">
+              <Building2 className="input-icon" size={18} />
+              <input
+                type="text"
+                className="form-input with-icon"
+                placeholder="E.g., Kafal Care"
+                value={orgForm.name}
+                onChange={e => setOrgForm(f => ({...f, name: e.target.value}))}
+              />
+            </div>
+          </div>
+          
+          <div className="input-group" style={{marginBottom: '1.5rem'}}>
+            <label>Workspace Shared Password</label>
+            <div className="input-icon-wrapper">
+              <Key className="input-icon" size={18} />
+              <input
+                type="password"
+                className="form-input with-icon"
+                placeholder="••••••••"
+                value={orgForm.password}
+                onChange={e => setOrgForm(f => ({...f, password: e.target.value}))}
+              />
+            </div>
+          </div>
+
+          {orgError && <div className="form-error">{orgError}</div>}
+          
+          <div className="form-row">
+            <button onClick={() => handleJoinOrCreateOrg('join')} className="btn-primary" disabled={orgLoading}>
+              Join Workspace
+            </button>
+            <button onClick={() => handleJoinOrCreateOrg('create')} className="btn-primary" disabled={orgLoading} style={{background: 'var(--bg-2)', color: 'var(--text)', border: '1px solid var(--border)'}}>
+              Create New Workspace
+            </button>
+          </div>
+          <button onClick={onLogout} className="logout-btn" style={{marginTop: '2rem'}}>Log Out</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="dashboard-layout">
-      {/* Sidebar */}
       <aside className={`sidebar ${isSidebarOpen ? 'open' : 'closed'}`}>
         <div className="sidebar-header">
           <div className="org-brand">
@@ -113,11 +168,9 @@ export default function Dashboard({ user, onLogout }) {
                 <path d="M12 7.5a3 3 0 00-2 5.24 4.5 4.5 0 014.24-4.24A3 3 0 0012 7.5z" fill="#1e1b4b" />
               </svg>
             </div>
-            <span style={{fontWeight: 700, fontSize: '1.1rem'}}>{user.organization}</span>
+            <span style={{fontWeight: 700, fontSize: '1.1rem'}}>{user.activeOrganization}</span>
           </div>
-          <button className="icon-btn mobile-toggle" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-            ✕
-          </button>
+          <button className="icon-btn mobile-toggle" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>✕</button>
         </div>
 
         <div className="sidebar-user-card">
@@ -131,53 +184,28 @@ export default function Dashboard({ user, onLogout }) {
         </div>
 
         <div className="sidebar-content">
-          {/* Employee Clock In View */}
-          {user.role === 'employee' && (
-            <div className="clock-in-section">
-              <div style={{textAlign: 'center', marginBottom: '1rem', color: 'var(--text-2)', fontSize: '0.9rem'}}>
-                Broadcast your location to the admin dashboard.
-              </div>
-              <button 
-                className={`clock-btn ${isClockedIn ? 'clocked-out' : 'clocked-in'}`}
-                onClick={toggleClock}
-              >
-                {isClockedIn ? (
-                  <><Square size={20} fill="currentColor"/> STOP TRACKING</>
-                ) : (
-                  <><Play size={20} fill="currentColor"/> CLOCK IN</>
-                )}
-              </button>
-            </div>
-          )}
-
-          {/* Admin Tools */}
-          {user.role === 'admin' && (
-            <div className="admin-tools">
-              <h3 className="section-title"><Users size={16}/> Team Directory</h3>
-              <form onSubmit={handleInvite} className="invite-form">
-                <input 
-                  type="email" 
-                  placeholder="Employee Email"
-                  className="form-input"
-                  style={{padding: '0.5rem 0.8rem', fontSize: '0.85rem'}}
-                  value={inviteEmail}
-                  onChange={e => setInviteEmail(e.target.value)}
-                />
-                <button type="submit" className="btn-primary small full">Send Invite</button>
-                {inviteMsg && <div style={{fontSize:'0.75rem', marginTop: '0.5rem', color: 'var(--primary)'}}>{inviteMsg}</div>}
-              </form>
-            </div>
-          )}
+          <div className="clock-in-section" style={{marginBottom: '2rem'}}>
+            <button 
+              className={`clock-btn ${isClockedIn ? 'clocked-out' : 'clocked-in'}`}
+              onClick={toggleClock}
+            >
+              {isClockedIn ? (
+                <><Square size={20} fill="currentColor"/> STOP TRACKING</>
+              ) : (
+                <><Play size={20} fill="currentColor"/> CLOCK IN TO SHIFT</>
+              )}
+            </button>
+          </div>
           
           <div className="active-users-list">
-            <h3 className="section-title">Active Now ({activeUsers.filter(u => u.lat).length})</h3>
+            <h3 className="section-title">Active Fleet ({activeUsers.filter(u => u.lat).length})</h3>
             <div className="users-scroll">
               {activeUsers.map(u => (
                 <div key={u.socketId} className="user-item">
                   <div className={`status-dot ${u.lat ? 'active' : 'idle'}`}></div>
                   <div className="user-details">
                     <span className="user-name">{u.name} {u.userId === user.id ? '(You)' : ''}</span>
-                    <span className="user-role">{u.role === 'admin' ? 'Command Center' : (u.lat ? 'Tracking active' : 'Offline')}</span>
+                    <span className="user-role">{u.designation || 'Employee'}</span>
                   </div>
                 </div>
               ))}
@@ -186,13 +214,20 @@ export default function Dashboard({ user, onLogout }) {
         </div>
 
         <div className="sidebar-footer">
+          <button onClick={() => {
+            // Unset active organization locally just logs them back to the workspace selector
+            if (window.confirm("Leave this workspace?")) {
+               onUpdateUser({...user, activeOrganization: null, role: 'none'});
+            }
+          }} className="logout-btn" style={{marginBottom: '0.5rem'}}>
+            Leave Workspace
+          </button>
           <button onClick={onLogout} className="logout-btn">
             <LogOut size={16} /> Logout
           </button>
         </div>
       </aside>
 
-      {/* Main Map Area */}
       <main className="map-area">
         {!isSidebarOpen && (
           <button className="menu-toggle-btn" onClick={() => setIsSidebarOpen(true)}>

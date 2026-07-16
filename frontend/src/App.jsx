@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import Setup from './pages/Setup';
-import Profile from './pages/Profile';
 import Dashboard from './pages/Dashboard';
 import api from './utils/api';
 
@@ -55,31 +53,16 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={
-          !user ? <Login onLogin={handleLogin} /> :
-          !user.profileComplete ? <Navigate to="/profile" /> :
-          <Navigate to="/dashboard" />
+          !user ? <Login onLogin={handleLogin} /> : <Navigate to="/dashboard" />
         } />
 
         <Route path="/register" element={
-          !user ? <Register onLogin={handleLogin} /> :
-          <Navigate to="/dashboard" />
-        } />
-
-        <Route path="/setup" element={
-          !user ? <Setup onLogin={handleLogin} /> :
-          <Navigate to="/dashboard" />
-        } />
-
-        <Route path="/profile" element={
-          !user ? <Navigate to="/" /> :
-          user.profileComplete ? <Navigate to="/dashboard" /> :
-          <Profile user={user} onComplete={(updated) => setUser(updated)} />
+          !user ? <Register onLogin={handleLogin} /> : <Navigate to="/dashboard" />
         } />
 
         <Route path="/dashboard" element={
           !user ? <Navigate to="/" /> :
-          !user.profileComplete ? <Navigate to="/profile" /> :
-          <Dashboard user={user} onLogout={handleLogout} />
+          <Dashboard user={user} onLogout={handleLogout} onUpdateUser={setUser} />
         } />
       </Routes>
     </Router>
