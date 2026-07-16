@@ -158,15 +158,15 @@ router.post('/org/create', async (req, res) => {
       createdBy: decoded.userId
     });
 
-    // Update user
-    const user = await User.findByIdAndUpdate(decoded.userId, {
+    // Update user's org and role
+    await User.findByIdAndUpdate(decoded.userId, {
       activeOrganization: org._id,
       role: 'admin'
-    }, { new: true }).populate('activeOrganization');
+    });
 
     res.json({
       user: {
-        id: user._id, name: user.name, email: user.email, role: user.role,
+        id: user._id, name: user.name, email: user.email, role: 'admin',
         activeOrganization: org.name
       }
     });
