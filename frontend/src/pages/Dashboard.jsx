@@ -171,15 +171,20 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
             </div>
             <span style={{fontWeight: 700, fontSize: '1.1rem'}}>{user.activeOrganization}</span>
           </div>
-          <button className="icon-btn mobile-toggle" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>✕</button>
+          <button
+            className="icon-btn"
+            title="Close sidebar"
+            style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-3)',fontSize:'1.2rem',padding:'0.25rem 0.5rem',borderRadius:'6px'}}
+            onClick={() => setIsSidebarOpen(false)}
+          >✕</button>
         </div>
 
         <div className="sidebar-user-card">
           <div className="user-info">
             <div className="user-avatar">{user.name.charAt(0).toUpperCase()}</div>
-            <div>
+            <div style={{flex:1}}>
               <div style={{fontWeight: 600, color: 'var(--text)'}}>{user.name}</div>
-              <div style={{fontSize: '0.8rem', color: 'var(--text-3)'}}>{user.role.toUpperCase()}</div>
+              <div style={{fontSize: '0.8rem', color: 'var(--text-3)'}}>{user.designation || user.role}</div>
             </div>
           </div>
         </div>
@@ -216,8 +221,8 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
                 >
                   <div className={`status-dot ${u.lat ? 'active' : 'idle'}`}></div>
                   <div className="user-details">
-                    <span className="user-name">{u.name} {u.userId === user.id ? '(You)' : ''}</span>
-                    <span className="user-role">{u.designation || 'Employee'}</span>
+                    <span className="user-name">{u.name}</span>
+                    <span className="user-role">{u.designation || u.role}</span>
                   </div>
                 </div>
               ))}
@@ -226,16 +231,17 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
         </div>
 
         <div className="sidebar-footer">
-          <button onClick={() => {
-            // Unset active organization locally just logs them back to the workspace selector
-            if (window.confirm("Leave this workspace?")) {
-               onUpdateUser({...user, activeOrganization: null, role: 'none'});
-            }
-          }} className="logout-btn" style={{marginBottom: '0.5rem'}}>
-            Leave Workspace
-          </button>
           <button onClick={onLogout} className="logout-btn">
-            <LogOut size={16} /> Logout
+            <LogOut size={16} /> Log Out
+          </button>
+          <button
+            onClick={() => {
+              if (window.confirm('Switch to a different workspace? Your current session will end.'))
+                onUpdateUser({...user, activeOrganization: null, role: 'none'});
+            }}
+            style={{background:'none',border:'none',color:'var(--text-3)',fontSize:'0.78rem',cursor:'pointer',marginTop:'0.75rem',textDecoration:'underline'}}
+          >
+            Switch Workspace
           </button>
         </div>
       </aside>
