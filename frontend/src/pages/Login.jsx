@@ -65,7 +65,7 @@ export default function Login({ onLogin }) {
               <input
                 type="text"
                 className="form-input with-icon"
-                placeholder="email@company.com or +977 98XXXXXXXX"
+                placeholder="Email address or phone number"
                 value={identifier}
                 onChange={e => handleIdentifierChange(e.target.value)}
                 autoFocus
