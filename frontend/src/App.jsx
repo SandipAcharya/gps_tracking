@@ -21,9 +21,15 @@ function App() {
 
     api('/api/auth/me')
       .then(data => setUser(data.user))
-      .catch(() => {
-        localStorage.removeItem('geo_token');
-        localStorage.removeItem('geo_room');
+      .catch((err) => {
+        // Only wipe token if the server explicitly says it's invalid (401/403).
+        // If it's a network error (e.g. Render server is waking up), keep the token!
+        if (err.message.includes('Invalid') || err.message.includes('Unauthorized')) {
+          localStorage.removeItem('geo_token');
+          localStorage.removeItem('geo_room');
+        } else {
+          console.warn('Backend might be asleep, or network error:', err.message);
+        }
       })
       .finally(() => setLoading(false));
   }, []);
