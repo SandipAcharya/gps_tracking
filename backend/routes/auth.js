@@ -4,30 +4,29 @@ const User = require('../models/User');
 const Organization = require('../models/Organization');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const Brevo = require('@getbrevo/brevo');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_jwt_secret_change_in_prod';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'acharyasandip137@gmail.com';
 
-// Brevo (Sendinblue) email client — HTTP API, works on Render
-const brevoClient = new Brevo.TransactionalEmailsApi();
-brevoClient.setApiKey(Brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY || '');
-
+// Uses Node 18+ native fetch — no SDK, no SMTP, works on Render
 const sendOtpEmail = async (toEmail, toName, otp) => {
-  const sendSmtpEmail = new Brevo.SendSmtpEmail();
-  sendSmtpEmail.sender = { name: 'Navigo Pro', email: process.env.BREVO_SENDER_EMAIL || 'acharyasandip137@gmail.com' };
-  sendSmtpEmail.to = [{ email: toEmail, name: toName }];
-  sendSmtpEmail.subject = 'Your Verification Code — Navigo Pro';
-  sendSmtpEmail.htmlContent = `
-    <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:32px;background:#f9fafb;border-radius:12px;">
-      <h2 style="color:#7c3aed;margin:0 0 8px;">Navigo Pro</h2>
-      <p style="color:#374151;">Hi ${toName},</p>
-      <p style="color:#374151;">Your verification code is:</p>
-      <div style="font-size:2.8rem;font-weight:900;letter-spacing:16px;color:#1e1b4b;margin:24px 0;text-align:center;">${otp}</div>
-      <p style="font-size:0.85rem;color:#6b7280;">This code expires in 10 minutes. Do not share it.</p>
-    </div>`;
-  const result = await brevoClient.sendTransacEmail(sendSmtpEmail);
-  return result;
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'api-key': process.env.BREVO_API_KEY || ''
+    },
+    body: JSON.stringify({
+      sender: { name: 'Navigo Pro', email: process.env.BREVO_SENDER_EMAIL || 'acharyasandip137@gmail.com' },
+      to: [{ email: toEmail, name: toName }],
+      subject: 'Your Verification Code — Navigo Pro',
+      htmlContent: `<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:32px;background:#f9fafb;border-radius:12px;"><h2 style="color:#7c3aed;">Navigo Pro</h2><p>Hi ${toName},</p><p>Your verification code is:</p><div style="font-size:2.8rem;font-weight:900;letter-spacing:16px;color:#1e1b4b;margin:24px 0;text-align:center;">${otp}</div><p style="font-size:0.85rem;color:#6b7280;">This code expires in 10 minutes.</p></div>`
+    })
+  });
+  if (!res.ok) {
+    const errBody = await res.json();
+    throw new Error(errBody.message || `Brevo API error ${res.status}`);
+  }
 };
 
 // 1. User Registration
