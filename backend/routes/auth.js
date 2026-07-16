@@ -4,31 +4,30 @@ const User = require('../models/User');
 const Organization = require('../models/Organization');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_jwt_secret_change_in_prod';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'acharyasandip137@gmail.com';
 
-// Mailer Setup — use explicit SMTP instead of 'service: gmail' for reliability
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false, // use STARTTLS
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASS
-  },
-  tls: { rejectUnauthorized: false }
-});
+// Resend email client — uses HTTPS not SMTP, works on Render
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Verify mailer config on startup
-transporter.verify((error) => {
-  if (error) {
-    console.error('❌ Mailer config error:', error.message);
-  } else {
-    console.log('✅ Mailer ready — OTPs will be sent via', process.env.GMAIL_USER);
-  }
-});
+const sendOtpEmail = async (toEmail, toName, otp) => {
+  const { error } = await resend.emails.send({
+    from: 'Navigo Pro <onboarding@resend.dev>',
+    to: toEmail,
+    subject: 'Your Verification Code — Navigo Pro',
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:32px;background:#f9fafb;border-radius:12px;">
+        <h2 style="color:#7c3aed;margin:0 0 8px;">Navigo Pro</h2>
+        <p style="color:#374151;">Hi ${toName},</p>
+        <p style="color:#374151;">Your verification code is:</p>
+        <div style="font-size:2.8rem;font-weight:900;letter-spacing:16px;color:#1e1b4b;margin:24px 0;text-align:center;">${otp}</div>
+        <p style="font-size:0.85rem;color:#6b7280;">This code expires in 10 minutes. Do not share it with anyone.</p>
+      </div>`
+  });
+  if (error) throw new Error(error.message);
+};
 
 // 1. User Registration
 router.post('/register', async (req, res) => {
@@ -61,22 +60,12 @@ router.post('/register', async (req, res) => {
     }
 
     try {
-      await transporter.sendMail({
-        from: `"Navigo Pro" <${process.env.GMAIL_USER}>`,
-        to: user.email,
-        subject: 'Your Verification Code — Navigo Pro',
-        html: `
-          <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px;background:#f9fafb;border-radius:12px;">
-            <h2 style="color:#7c3aed;margin-bottom:8px;">Navigo Pro</h2>
-            <p style="margin-bottom:16px;">Hi ${user.name},</p>
-            <p>Your verification code is:</p>
-            <div style="font-size:2.5rem;font-weight:900;letter-spacing:12px;color:#1e1b4b;margin:20px 0;">${otp}</div>
-            <p style="font-size:0.85rem;color:#6b7280;">This code expires in 10 minutes. Do not share it with anyone.</p>
-          </div>`
-      });
+      await sendOtpEmail(user.email, user.name, otp);
       console.log('✅ OTP email sent to', user.email);
     } catch (e) {
-      console.error('❌ Mail send error:', e.message);
+      console.error('❌ Mail error:', e.message);
+      // Still respond — OTP in logs as fallback during dev
+      console.log('[DEV FALLBACK] OTP is:', otp);
     }
 
     res.json({ message: 'OTP sent to your email.' });
