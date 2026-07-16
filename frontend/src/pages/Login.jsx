@@ -55,7 +55,7 @@ export default function Login({ onLogin }) {
         <form onSubmit={handleLogin} className="auth-form">
           <div className="form-header">
             <h2>Welcome</h2>
-            <p>Log in to access your organization workspace</p>
+            <p>Log in to your account to continue</p>
           </div>
 
           <div className="input-group">
@@ -96,7 +96,7 @@ export default function Login({ onLogin }) {
           {error && <div className="form-error">{error}</div>}
 
           <button type="submit" className="btn-primary" disabled={loading}>
-            {loading ? <span className="btn-spinner"></span> : 'Log In to Workspace'}
+            {loading ? <span className="btn-spinner"></span> : 'Log In'}
           </button>
           
           <div className="bio-login-hint">
@@ -104,8 +104,8 @@ export default function Login({ onLogin }) {
           </div>
 
           <div style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.9rem' }}>
-            <span style={{color: 'var(--text-secondary)'}}>Don't have a workspace? </span>
-            <Link to="/register" style={{color: 'var(--primary)', textDecoration: 'none', fontWeight: '500'}}>Create one</Link>
+            <span style={{color: 'var(--text-secondary)'}}>Don't have an account? </span>
+            <Link to="/register" style={{color: 'var(--primary)', textDecoration: 'none', fontWeight: '500'}}>Sign up</Link>
           </div>
         </form>
       </div>
