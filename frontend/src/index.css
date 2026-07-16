@@ -102,6 +102,41 @@ html, body, #root {
     radial-gradient(ellipse 40% 30% at 80% 80%, rgba(16,185,129,0.08) 0%, transparent 50%);
 }
 
+.input-icon-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-icon {
+  position: absolute;
+  left: 1rem;
+  color: var(--text-secondary);
+}
+
+.form-input.with-icon {
+  padding-left: 2.75rem;
+}
+
+.forgot-password {
+  font-size: 0.8rem;
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.forgot-password:hover {
+  text-decoration: underline;
+}
+
+.bio-login-hint {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
 .auth-card {
   width: 100%;
   max-width: 420px;

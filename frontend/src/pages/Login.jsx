@@ -1,16 +1,13 @@
 import React, { useState } from 'react';
 import api from '../utils/api';
-
-const STEPS = { IDENTIFY: 1, OTP: 2 };
+import { Mail, Lock, Phone } from 'lucide-react';
 
 export default function Login({ onLogin }) {
-  const [step, setStep] = useState(STEPS.IDENTIFY);
   const [identifier, setIdentifier] = useState('');
-  const [isEmail, setIsEmail] = useState(true);
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [devOtp, setDevOtp] = useState('');
+  const [isEmail, setIsEmail] = useState(true);
 
   const handleIdentifierChange = (val) => {
     setIdentifier(val);
@@ -18,65 +15,20 @@ export default function Login({ onLogin }) {
     setError('');
   };
 
-  const handleRequestOtp = async (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if (!identifier.trim()) return setError('Please enter your email or phone number.');
+    if (!identifier.trim() || !password) return setError('Please enter your email/phone and password.');
     setLoading(true);
     setError('');
+    
     try {
-      const data = await api('/api/auth/request-otp', {
+      const data = await api('/api/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ identifier: identifier.trim() })
-      });
-      setDevOtp(data.devOtp || '');
-      setStep(STEPS.OTP);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleOtpChange = (idx, val) => {
-    if (!/^\d?$/.test(val)) return;
-    const next = [...otp];
-    next[idx] = val;
-    setOtp(next);
-    if (val && idx < 5) {
-      document.getElementById(`otp-${idx + 1}`)?.focus();
-    }
-  };
-
-  const handleOtpPaste = (e) => {
-    const paste = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-    if (paste.length === 6) {
-      setOtp(paste.split(''));
-      document.getElementById('otp-5')?.focus();
-    }
-  };
-
-  const handleOtpKeyDown = (idx, e) => {
-    if (e.key === 'Backspace' && !otp[idx] && idx > 0) {
-      document.getElementById(`otp-${idx - 1}`)?.focus();
-    }
-  };
-
-  const handleVerify = async (e) => {
-    e.preventDefault();
-    const otpString = otp.join('');
-    if (otpString.length < 6) return setError('Please enter the complete 6-digit code.');
-    setLoading(true);
-    setError('');
-    try {
-      const data = await api('/api/auth/verify-otp', {
-        method: 'POST',
-        body: JSON.stringify({ identifier: identifier.trim(), otp: otpString })
+        body: JSON.stringify({ identifier: identifier.trim(), password })
       });
       onLogin(data.token, data.user);
     } catch (err) {
       setError(err.message);
-      setOtp(['', '', '', '', '', '']);
-      document.getElementById('otp-0')?.focus();
     } finally {
       setLoading(false);
     }
@@ -96,86 +48,61 @@ export default function Login({ onLogin }) {
           </div>
           <div>
             <h1 className="logo-name">GeoTracker</h1>
-            <p className="logo-tagline">Real-time team location</p>
+            <p className="logo-tagline">Enterprise Fleet Management</p>
           </div>
         </div>
 
-        {step === STEPS.IDENTIFY && (
-          <form onSubmit={handleRequestOtp} className="auth-form">
-            <div className="form-header">
-              <h2>Welcome back</h2>
-              <p>Enter your email or phone to continue</p>
-            </div>
+        <form onSubmit={handleLogin} className="auth-form">
+          <div className="form-header">
+            <h2>Welcome back</h2>
+            <p>Log in to access your organization workspace</p>
+          </div>
 
-            <div className="input-group">
-              <label>Email or Phone Number</label>
+          <div className="input-group">
+            <label>Email or Phone Number</label>
+            <div className="input-icon-wrapper">
+              {isEmail ? <Mail className="input-icon" size={18} /> : <Phone className="input-icon" size={18} />}
               <input
                 type="text"
-                className="form-input"
+                className="form-input with-icon"
                 placeholder="email@company.com or +977 98XXXXXXXX"
                 value={identifier}
                 onChange={e => handleIdentifierChange(e.target.value)}
                 autoFocus
               />
-              <span className="input-hint">
-                {identifier && (isEmail ? '📧 We\'ll send a code to this email' : '📱 We\'ll send a code to this number')}
-              </span>
             </div>
+          </div>
 
-            {error && <div className="form-error">{error}</div>}
-
-            <button type="submit" className="btn-primary" disabled={loading}>
-              {loading ? <span className="btn-spinner"></span> : 'Send Verification Code'}
-            </button>
-          </form>
-        )}
-
-        {step === STEPS.OTP && (
-          <form onSubmit={handleVerify} className="auth-form">
-            <div className="form-header">
-              <h2>Check your {isEmail ? 'email' : 'phone'}</h2>
-              <p>
-                We sent a 6-digit code to <strong>{identifier}</strong>
-              </p>
-              {devOtp && (
-                <div className="dev-badge">
-                  🛠 Dev Mode · OTP: <strong>{devOtp}</strong>
-                </div>
-              )}
+          <div className="input-group">
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <label>Password</label>
+              <a href="#" className="forgot-password" onClick={(e) => {
+                e.preventDefault();
+                alert('Forgot Password flow will send a secure reset link to your registered email.');
+              }}>Forgot password?</a>
             </div>
-
-            <div className="otp-grid" onPaste={handleOtpPaste}>
-              {otp.map((digit, idx) => (
-                <input
-                  key={idx}
-                  id={`otp-${idx}`}
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={1}
-                  className={`otp-box ${digit ? 'filled' : ''}`}
-                  value={digit}
-                  onChange={e => handleOtpChange(idx, e.target.value)}
-                  onKeyDown={e => handleOtpKeyDown(idx, e)}
-                  autoFocus={idx === 0}
-                />
-              ))}
+            <div className="input-icon-wrapper">
+              <Lock className="input-icon" size={18} />
+              <input
+                type="password"
+                className="form-input with-icon"
+                placeholder="••••••••"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+              />
             </div>
+          </div>
 
-            {error && <div className="form-error">{error}</div>}
+          {error && <div className="form-error">{error}</div>}
 
-            <button type="submit" className="btn-primary" disabled={loading}>
-              {loading ? <span className="btn-spinner"></span> : 'Verify & Sign In'}
-            </button>
-
-            <button
-              type="button"
-              className="btn-ghost"
-              onClick={() => { setStep(STEPS.IDENTIFY); setError(''); setOtp(['','','','','','']); }}
-            >
-              ← Change {isEmail ? 'email' : 'number'}
-            </button>
-          </form>
-        )}
+          <button type="submit" className="btn-primary" disabled={loading}>
+            {loading ? <span className="btn-spinner"></span> : 'Log In to Workspace'}
+          </button>
+          
+          <div className="bio-login-hint">
+             Fingerprint & FaceID login will be enabled in the mobile app release.
+          </div>
+        </form>
       </div>
     </div>
   );

@@ -12,12 +12,18 @@ const userSchema = new mongoose.Schema({
   office: { type: String, trim: true },
   profileComplete: { type: Boolean, default: false },
 
+  // Organization (Multi-tenant support)
+  organization: { type: String, trim: true },
+
   // Role — set by admin manually or at first registration
   role: { type: String, enum: ['admin', 'employee'], default: 'employee' },
 
-  // OTP state
-  otp: { type: String },
-  otpExpiresAt: { type: Date },
+  // Authentication
+  password: { type: String }, // Hashed password
+  
+  // Magic Link / Invite State
+  inviteToken: { type: String },
+  inviteTokenExpiresAt: { type: Date },
 
   createdAt: { type: Date, default: Date.now }
 });
