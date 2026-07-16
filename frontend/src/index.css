@@ -3,9 +3,9 @@
 /* ─── Design Tokens ─────────────────────────────────── */
 :root {
   /* Light Theme (Default) */
-  --primary: #6366f1;
-  --primary-dark: #4f46e5;
-  --primary-glow: rgba(99, 102, 241, 0.15);
+  --primary: #7c3aed;
+  --primary-dark: #6d28d9;
+  --primary-glow: rgba(124, 58, 237, 0.15);
   --accent: #10b981;
   --accent-dark: #059669;
   --danger: #ef4444;
@@ -298,6 +298,25 @@ html, body, #root {
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s;
+}
+.logo-icon {
+  width: 48px;
+  height: 48px;
+  background: #7c3aed;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  box-shadow: 0 8px 16px rgba(124, 58, 237, 0.25);
+}
+
+.logo-icon.navigo {
+  background: transparent;
+  color: #7c3aed;
+  box-shadow: none;
+  width: auto;
+  height: auto;
 }
 .icon-btn:hover { background: var(--bg-card-hover); color: var(--text); }
 .icon-btn.danger:hover { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.4); color: var(--danger); }

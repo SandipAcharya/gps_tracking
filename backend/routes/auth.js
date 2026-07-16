@@ -211,6 +211,29 @@ router.post('/setup', async (req, res) => {
   }
 });
 
+// 4.5 Legacy / Complete Profile
+router.post('/complete-profile', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'Unauthorized.' });
+
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const { name, phone, designation, office } = req.body;
+
+    const user = await User.findByIdAndUpdate(
+      decoded.userId,
+      { name, phone: phone || undefined, designation, office, profileComplete: true },
+      { new: true }
+    );
+
+    res.json({ user });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Profile update failed.' });
+  }
+});
+
 // 5. Get Current User
 router.get('/me', async (req, res) => {
   const authHeader = req.headers.authorization;

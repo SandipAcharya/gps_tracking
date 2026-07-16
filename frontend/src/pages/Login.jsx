@@ -39,16 +39,15 @@ export default function Login({ onLogin }) {
       <div className="auth-card">
         {/* Logo */}
         <div className="auth-logo">
-          <div className="logo-icon">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="3" fill="white"/>
-              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="white" opacity="0.3"/>
-              <circle cx="12" cy="9" r="2.5" fill="white"/>
+          <div className="logo-icon navigo">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="32" height="32">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 10.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z" />
+              <path d="M12 7.5a3 3 0 00-2 5.24 4.5 4.5 0 014.24-4.24A3 3 0 0012 7.5z" fill="#1e1b4b" />
             </svg>
           </div>
           <div>
-            <h1 className="logo-name">GeoTracker</h1>
-            <p className="logo-tagline">Enterprise Fleet Management</p>
+            <h1 className="logo-name" style={{letterSpacing: '1px'}}>NAVIGO PRO</h1>
+            <p className="logo-tagline" style={{letterSpacing: '3px', textTransform: 'uppercase', fontSize: '0.7rem'}}>Move Sharp</p>
           </div>
         </div>
 
