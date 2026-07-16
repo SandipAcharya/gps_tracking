@@ -1,217 +1,206 @@
-import React, { useState, useEffect } from 'react';
-import { LogOut, Plus, Lock, Building2, Users, ChevronRight, Loader2 } from 'lucide-react';
-import api from '../utils/api';
+import React, { useState, useEffect, useRef } from 'react';
+import { io } from 'socket.io-client';
+import Map from '../components/Map';
+import api, { BASE_URL } from '../utils/api';
+import { LogOut, UserPlus, Play, Square, Users } from 'lucide-react';
 
-export default function Dashboard({ user, onJoinRoom, onLogout }) {
-  const [rooms, setRooms] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [joiningRoomId, setJoiningRoomId] = useState(null);
-  const [passwordInput, setPasswordInput] = useState({});
-  const [errors, setErrors] = useState({});
-  const [showCreate, setShowCreate] = useState(false);
-  const [createForm, setCreateForm] = useState({ roomId: '', password: '', company: '' });
-  const [createError, setCreateError] = useState('');
-  const [createLoading, setCreateLoading] = useState(false);
-
-  const isAdmin = user.role === 'admin';
+export default function Dashboard({ user, onLogout }) {
+  const [activeUsers, setActiveUsers] = useState([]);
+  const [isClockedIn, setIsClockedIn] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteMsg, setInviteMsg] = useState('');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  
+  const socketRef = useRef(null);
+  const watchIdRef = useRef(null);
 
   useEffect(() => {
-    api('/api/rooms')
-      .then(data => setRooms(data.rooms))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
-
-  const handleJoin = async (roomId) => {
-    const pwd = passwordInput[roomId] || '';
-    if (!pwd) return setErrors(e => ({ ...e, [roomId]: 'Enter the room password.' }));
-    setErrors(e => ({ ...e, [roomId]: '' }));
-    try {
-      const data = await api('/api/rooms/join', {
-        method: 'POST',
-        body: JSON.stringify({ roomId, password: pwd })
+    const token = localStorage.getItem('geo_token');
+    
+    // Connect to Socket
+    socketRef.current = io(BASE_URL, { auth: { token } });
+    
+    socketRef.current.on('connect', () => {
+      socketRef.current.emit('join_org', { 
+        organization: user.organization, 
+        userProfile: user 
       });
-      onJoinRoom({ roomId: data.roomId, company: data.company });
-    } catch (err) {
-      setErrors(e => ({ ...e, [roomId]: err.message }));
+    });
+
+    socketRef.current.on('org_users', (users) => {
+      // Deduplicate users (only keep the latest socket for each user)
+      const uniqueUsersMap = new window.Map();
+      users.forEach(u => {
+        const key = u.userId || u.email || u.phone;
+        // Prefer entries with location
+        if (!uniqueUsersMap.has(key) || (u.lat && u.lng)) {
+          uniqueUsersMap.set(key, u);
+        }
+      });
+      setActiveUsers(Array.from(uniqueUsersMap.values()));
+    });
+
+    return () => {
+      if (socketRef.current) socketRef.current.disconnect();
+      if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current);
+    };
+  }, [user]);
+
+  // Handle Clock In / Out
+  const toggleClock = () => {
+    if (!isClockedIn) {
+      if ('geolocation' in navigator) {
+        setIsClockedIn(true);
+        watchIdRef.current = navigator.geolocation.watchPosition(
+          (pos) => {
+            const { latitude, longitude } = pos.coords;
+            socketRef.current.emit('update_location', { 
+              organization: user.organization, 
+              lat: latitude, 
+              lng: longitude 
+            });
+          },
+          (err) => {
+            console.error(err);
+            alert('Please allow location access to clock in.');
+            setIsClockedIn(false);
+          },
+          { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+        );
+      } else {
+        alert('Geolocation is not supported by your browser.');
+      }
+    } else {
+      // Clock Out
+      setIsClockedIn(false);
+      if (watchIdRef.current) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      socketRef.current.emit('update_location', { 
+        organization: user.organization, 
+        lat: null, 
+        lng: null 
+      });
     }
   };
 
-  const handleCreate = async (e) => {
+  const handleInvite = async (e) => {
     e.preventDefault();
-    if (!createForm.roomId || !createForm.password) return setCreateError('Room ID and password are required.');
-    setCreateLoading(true);
-    setCreateError('');
+    if (!inviteEmail) return;
     try {
-      await api('/api/rooms/create', {
+      const data = await api('/api/auth/invite', {
         method: 'POST',
-        body: JSON.stringify(createForm)
+        body: JSON.stringify({ email: inviteEmail })
       });
-      const data = await api('/api/rooms');
-      setRooms(data.rooms);
-      setShowCreate(false);
-      setCreateForm({ roomId: '', password: '', company: '' });
+      setInviteMsg('Invite sent successfully!');
+      setInviteEmail('');
+      setTimeout(() => setInviteMsg(''), 3000);
     } catch (err) {
-      setCreateError(err.message);
-    } finally {
-      setCreateLoading(false);
+      setInviteMsg(err.message);
     }
   };
-
-  const initials = (user.name || user.email || '?').charAt(0).toUpperCase();
 
   return (
-    <div className="dashboard-bg">
-      {/* Top Nav */}
-      <nav className="dash-nav">
-        <div className="dash-nav-logo">
-          <div className="logo-icon small">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="9" r="2.5" fill="white"/>
-              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="white" opacity="0.4"/>
-            </svg>
-          </div>
-          <span>GeoTracker</span>
-        </div>
-
-        <div className="dash-nav-right">
-          {isAdmin && (
-            <button className="btn-primary small" onClick={() => setShowCreate(true)}>
-              <Plus size={16} /> New Room
-            </button>
-          )}
-          <div className="user-pill">
-            <div className="user-pill-avatar">{initials}</div>
-            <div className="user-pill-info">
-              <span className="user-pill-name">{user.name}</span>
-              <span className="user-pill-role">{isAdmin ? '👑 Admin' : user.designation}</span>
+    <div className="dashboard-layout">
+      {/* Sidebar */}
+      <aside className={`sidebar ${isSidebarOpen ? 'open' : 'closed'}`}>
+        <div className="sidebar-header">
+          <div className="org-brand">
+            <div className="logo-icon navigo small">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 10.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z" />
+                <path d="M12 7.5a3 3 0 00-2 5.24 4.5 4.5 0 014.24-4.24A3 3 0 0012 7.5z" fill="#1e1b4b" />
+              </svg>
             </div>
+            <span style={{fontWeight: 700, fontSize: '1.1rem'}}>{user.organization}</span>
           </div>
-          <button className="icon-btn" onClick={onLogout} title="Log out">
-            <LogOut size={18} />
+          <button className="icon-btn mobile-toggle" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+            ✕
           </button>
         </div>
-      </nav>
 
-      {/* Main Content */}
-      <main className="dash-main">
-        <div className="dash-header">
-          <h1>Tracking Rooms</h1>
-          <p>Select a room to start live tracking with your team</p>
-        </div>
-
-        {loading ? (
-          <div className="dash-loading">
-            <Loader2 size={32} className="spin" />
-            <span>Loading rooms...</span>
-          </div>
-        ) : rooms.length === 0 ? (
-          <div className="dash-empty">
-            <Building2 size={48} opacity={0.3} />
-            <h3>No rooms yet</h3>
-            {isAdmin
-              ? <p>Create the first room for your team to join.</p>
-              : <p>Ask your admin to create a room and share the password with you.</p>
-            }
-            {isAdmin && (
-              <button className="btn-primary" onClick={() => setShowCreate(true)}>
-                <Plus size={16} /> Create First Room
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="room-grid">
-            {rooms.map(room => (
-              <div
-                key={room.roomId}
-                className={`room-card ${joiningRoomId === room.roomId ? 'active' : ''}`}
-                onClick={() => setJoiningRoomId(joiningRoomId === room.roomId ? null : room.roomId)}
-              >
-                <div className="room-card-top">
-                  <div className="room-icon">
-                    <Building2 size={22} />
-                  </div>
-                  <div className="room-info">
-                    <h3>{room.company || room.roomId}</h3>
-                    <span className="room-id">#{room.roomId}</span>
-                  </div>
-                  <ChevronRight size={18} className={`room-chevron ${joiningRoomId === room.roomId ? 'rotated' : ''}`} />
-                </div>
-
-                {joiningRoomId === room.roomId && (
-                  <div className="room-password-form" onClick={e => e.stopPropagation()}>
-                    <div className="input-group">
-                      <div className="password-input-wrap">
-                        <Lock size={16} className="input-icon" />
-                        <input
-                          className="form-input with-icon"
-                          type="password"
-                          placeholder="Enter room password"
-                          value={passwordInput[room.roomId] || ''}
-                          onChange={e => setPasswordInput(p => ({ ...p, [room.roomId]: e.target.value }))}
-                          onKeyDown={e => e.key === 'Enter' && handleJoin(room.roomId)}
-                          autoFocus
-                        />
-                      </div>
-                      {errors[room.roomId] && <div className="form-error small">{errors[room.roomId]}</div>}
-                    </div>
-                    <button className="btn-primary full" onClick={() => handleJoin(room.roomId)}>
-                      <Users size={16} /> Join Room
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </main>
-
-      {/* Create Room Modal */}
-      {showCreate && (
-        <div className="modal-overlay" onClick={() => setShowCreate(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Create New Room</h2>
-              <button className="icon-btn" onClick={() => setShowCreate(false)}>✕</button>
+        <div className="sidebar-user-card">
+          <div className="user-info">
+            <div className="user-avatar">{user.name.charAt(0).toUpperCase()}</div>
+            <div>
+              <div style={{fontWeight: 600, color: 'var(--text)'}}>{user.name}</div>
+              <div style={{fontSize: '0.8rem', color: 'var(--text-3)'}}>{user.role.toUpperCase()}</div>
             </div>
-            <form onSubmit={handleCreate} className="auth-form">
-              <div className="input-group">
-                <label>Company Name</label>
-                <input
-                  className="form-input"
-                  placeholder="e.g. Kafal Care"
-                  value={createForm.company}
-                  onChange={e => setCreateForm(f => ({ ...f, company: e.target.value }))}
-                />
-              </div>
-              <div className="input-group">
-                <label>Room ID <span className="required">*</span></label>
-                <input
-                  className="form-input"
-                  placeholder="e.g. kafal-care-2025"
-                  value={createForm.roomId}
-                  onChange={e => setCreateForm(f => ({ ...f, roomId: e.target.value.toLowerCase().replace(/\s+/g, '-') }))}
-                />
-                <span className="input-hint">Lowercase, no spaces. Share this with employees.</span>
-              </div>
-              <div className="input-group">
-                <label>Room Password <span className="required">*</span></label>
-                <input
-                  className="form-input"
-                  type="password"
-                  placeholder="Strong password"
-                  value={createForm.password}
-                  onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))}
-                />
-              </div>
-              {createError && <div className="form-error">{createError}</div>}
-              <button type="submit" className="btn-primary" disabled={createLoading}>
-                {createLoading ? <span className="btn-spinner"></span> : 'Create Room'}
-              </button>
-            </form>
           </div>
         </div>
-      )}
+
+        <div className="sidebar-content">
+          {/* Employee Clock In View */}
+          {user.role === 'employee' && (
+            <div className="clock-in-section">
+              <div style={{textAlign: 'center', marginBottom: '1rem', color: 'var(--text-2)', fontSize: '0.9rem'}}>
+                Broadcast your location to the admin dashboard.
+              </div>
+              <button 
+                className={`clock-btn ${isClockedIn ? 'clocked-out' : 'clocked-in'}`}
+                onClick={toggleClock}
+              >
+                {isClockedIn ? (
+                  <><Square size={20} fill="currentColor"/> STOP TRACKING</>
+                ) : (
+                  <><Play size={20} fill="currentColor"/> CLOCK IN</>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Admin Tools */}
+          {user.role === 'admin' && (
+            <div className="admin-tools">
+              <h3 className="section-title"><Users size={16}/> Team Directory</h3>
+              <form onSubmit={handleInvite} className="invite-form">
+                <input 
+                  type="email" 
+                  placeholder="Employee Email"
+                  className="form-input"
+                  style={{padding: '0.5rem 0.8rem', fontSize: '0.85rem'}}
+                  value={inviteEmail}
+                  onChange={e => setInviteEmail(e.target.value)}
+                />
+                <button type="submit" className="btn-primary small full">Send Invite</button>
+                {inviteMsg && <div style={{fontSize:'0.75rem', marginTop: '0.5rem', color: 'var(--primary)'}}>{inviteMsg}</div>}
+              </form>
+            </div>
+          )}
+          
+          <div className="active-users-list">
+            <h3 className="section-title">Active Now ({activeUsers.filter(u => u.lat).length})</h3>
+            <div className="users-scroll">
+              {activeUsers.map(u => (
+                <div key={u.socketId} className="user-item">
+                  <div className={`status-dot ${u.lat ? 'active' : 'idle'}`}></div>
+                  <div className="user-details">
+                    <span className="user-name">{u.name} {u.userId === user.id ? '(You)' : ''}</span>
+                    <span className="user-role">{u.role === 'admin' ? 'Command Center' : (u.lat ? 'Tracking active' : 'Offline')}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="sidebar-footer">
+          <button onClick={onLogout} className="logout-btn">
+            <LogOut size={16} /> Logout
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Map Area */}
+      <main className="map-area">
+        {!isSidebarOpen && (
+          <button className="menu-toggle-btn" onClick={() => setIsSidebarOpen(true)}>
+            ☰ Menu
+          </button>
+        )}
+        <Map users={activeUsers.filter(u => u.lat && u.lng)} currentUserId={user.id} />
+      </main>
     </div>
   );
 }

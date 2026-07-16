@@ -48,39 +48,42 @@ io.use((socket, next) => {
 io.on('connection', (socket) => {
   console.log(`Socket connected: ${socket.id} | User: ${socket.user?.userId}`);
 
-  socket.on('join_room', ({ roomId, userProfile }) => {
-    socket.join(roomId);
-    if (!activeRooms[roomId]) activeRooms[roomId] = {};
+  socket.on('join_org', ({ organization, userProfile }) => {
+    if (!organization) return;
+    
+    socket.join(organization);
+    if (!activeRooms[organization]) activeRooms[organization] = {};
 
-    activeRooms[roomId][socket.id] = {
+    activeRooms[organization][socket.id] = {
       socketId: socket.id,
       userId: socket.user.userId,
       name: userProfile.name,
       designation: userProfile.designation,
       email: userProfile.email,
       phone: userProfile.phone,
+      role: userProfile.role,
       lat: null,
       lng: null
     };
 
-    io.to(roomId).emit('room_users', Object.values(activeRooms[roomId]));
-    console.log(`${userProfile.name} joined room: ${roomId}`);
+    io.to(organization).emit('org_users', Object.values(activeRooms[organization]));
+    console.log(`${userProfile.name} joined org: ${organization}`);
   });
 
-  socket.on('update_location', ({ roomId, lat, lng }) => {
-    if (activeRooms[roomId]?.[socket.id]) {
-      activeRooms[roomId][socket.id].lat = lat;
-      activeRooms[roomId][socket.id].lng = lng;
-      io.to(roomId).emit('room_users', Object.values(activeRooms[roomId]));
+  socket.on('update_location', ({ organization, lat, lng }) => {
+    if (activeRooms[organization]?.[socket.id]) {
+      activeRooms[organization][socket.id].lat = lat;
+      activeRooms[organization][socket.id].lng = lng;
+      io.to(organization).emit('org_users', Object.values(activeRooms[organization]));
     }
   });
 
   socket.on('disconnect', () => {
-    for (const roomId in activeRooms) {
-      if (activeRooms[roomId][socket.id]) {
-        delete activeRooms[roomId][socket.id];
-        io.to(roomId).emit('room_users', Object.values(activeRooms[roomId]));
-        console.log(`${socket.id} left room: ${roomId}`);
+    for (const org in activeRooms) {
+      if (activeRooms[org][socket.id]) {
+        delete activeRooms[org][socket.id];
+        io.to(org).emit('org_users', Object.values(activeRooms[org]));
+        console.log(`${socket.id} left org: ${org}`);
         break;
       }
     }

@@ -5,16 +5,11 @@ import Register from './pages/Register';
 import Setup from './pages/Setup';
 import Profile from './pages/Profile';
 import Dashboard from './pages/Dashboard';
-import MapRoom from './pages/MapRoom';
 import api from './utils/api';
 
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeRoom, setActiveRoom] = useState(() => {
-    const saved = localStorage.getItem('geo_room');
-    return saved ? JSON.parse(saved) : null;
-  });
 
   // On mount, validate token and restore session
   useEffect(() => {
@@ -28,7 +23,6 @@ function App() {
         // If it's a network error (e.g. Render server is waking up), keep the token!
         if (err.message.includes('Invalid') || err.message.includes('Unauthorized')) {
           localStorage.removeItem('geo_token');
-          localStorage.removeItem('geo_room');
         } else {
           console.warn('Backend might be asleep, or network error:', err.message);
         }
@@ -43,19 +37,7 @@ function App() {
 
   const handleLogout = () => {
     localStorage.removeItem('geo_token');
-    localStorage.removeItem('geo_room');
     setUser(null);
-    setActiveRoom(null);
-  };
-
-  const handleJoinRoom = (room) => {
-    localStorage.setItem('geo_room', JSON.stringify(room));
-    setActiveRoom(room);
-  };
-
-  const handleLeaveRoom = () => {
-    localStorage.removeItem('geo_room');
-    setActiveRoom(null);
   };
 
   if (loading) {
@@ -97,13 +79,7 @@ function App() {
         <Route path="/dashboard" element={
           !user ? <Navigate to="/" /> :
           !user.profileComplete ? <Navigate to="/profile" /> :
-          activeRoom ? <Navigate to="/room" /> :
-          <Dashboard user={user} onJoinRoom={handleJoinRoom} onLogout={handleLogout} />
-        } />
-
-        <Route path="/room" element={
-          !user || !activeRoom ? <Navigate to="/dashboard" /> :
-          <MapRoom user={user} room={activeRoom} onLeaveRoom={handleLeaveRoom} />
+          <Dashboard user={user} onLogout={handleLogout} />
         } />
       </Routes>
     </Router>
