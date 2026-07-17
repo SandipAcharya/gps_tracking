@@ -9,7 +9,7 @@ import { LogOut, Play, Square, Building2, Key } from 'lucide-react';
 export default function Dashboard({ user, onLogout, onUpdateUser }) {
   const [activeUsers, setActiveUsers] = useState([]);
   const [isClockedIn, setIsClockedIn] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   // Org Selection State
   const [orgForm, setOrgForm] = useState({ name: '', password: '' });
@@ -298,16 +298,16 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
         </div>
       </aside>
 
-      {/* Mobile overlay backdrop - clicking it closes the menu */}
+      {/* Backdrop: clicking outside closes sidebar */}
       {isSidebarOpen && (
-        <div 
+        <div
           onClick={() => setIsSidebarOpen(false)}
           style={{
-            display: 'none',
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
-            zIndex: 2999,
+            position: 'fixed', inset: 0,
+            background: 'rgba(0,0,0,0.35)',
+            zIndex: 1999,
+            cursor: 'pointer'
           }}
-          className="mobile-overlay"
         />
       )}
 
@@ -317,7 +317,7 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
             ☰ Menu
           </button>
         )}
-        <div className="map-container" style={{ position: 'relative', height: '100%', width: '100%' }}>
+        <div style={{ position: 'absolute', inset: 0 }}>
           <Map 
             users={activeUsers} 
             currentUserEmail={user.email} 
