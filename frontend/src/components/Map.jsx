@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import React, { useEffect, useRef, useState } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { getUserColor, getEmployeeColor } from '../utils/colors';
 
@@ -62,8 +62,43 @@ const ResizeFix = () => {
   return null;
 };
 
+// ─── Destination Click Handler ───────────────────────
+const MapClickHandler = ({ userRole, orgName, onDestinationAdded }) => {
+  useMapEvents({
+    async click(e) {
+      if (userRole !== 'admin') return;
+      const name = window.prompt("Enter destination name for Geofence:");
+      if (!name) return;
+      
+      try {
+        const response = await fetch('/api/destinations', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('geo_token')}`
+          },
+          body: JSON.stringify({
+            orgName,
+            name,
+            lat: e.latlng.lat,
+            lng: e.latlng.lng,
+            radius: 200
+          })
+        });
+        if (response.ok) {
+          const newDest = await response.json();
+          if (onDestinationAdded) onDestinationAdded(newDest);
+        }
+      } catch (err) {
+        console.error('Failed to add destination', err);
+      }
+    }
+  });
+  return null;
+};
+
 // ─── Main Map Component ───────────────────────────────
-const Map = ({ users, currentUserEmail, myLocation, focusLocation }) => {
+const Map = ({ users = [], currentUserEmail, myLocation, focusLocation, destinations = [], userRole, orgName, onDestinationAdded }) => {
   const defaultCenter = [27.7172, 85.3240]; // Kathmandu
   const center = myLocation ? [myLocation.lat, myLocation.lng] : defaultCenter;
 
@@ -83,6 +118,22 @@ const Map = ({ users, currentUserEmail, myLocation, focusLocation }) => {
 
       {myLocation && !focusLocation && <InitialCenter lat={myLocation.lat} lng={myLocation.lng} />}
       {focusLocation && <FocusController focusLocation={focusLocation} />}
+      <MapClickHandler userRole={userRole} orgName={orgName} onDestinationAdded={onDestinationAdded} />
+
+      {/* Render Destinations (Geofences) */}
+      {destinations.map(d => (
+        <Circle 
+          key={d._id} 
+          center={[d.lat, d.lng]} 
+          radius={d.radius} 
+          pathOptions={{ color: '#ec4899', fillColor: '#ec4899', fillOpacity: 0.2 }}
+        >
+          <Popup>
+            <strong>{d.name}</strong><br/>
+            Geofence Radius: {d.radius}m
+          </Popup>
+        </Circle>
+      ))}
 
       {users.map(u =>
         u.lat && u.lng ? (

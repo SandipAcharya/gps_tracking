@@ -9,8 +9,10 @@ const jwt = require('jsonwebtoken');
 const authRoutes = require('./routes/auth');
 const roomRoutes = require('./routes/rooms');
 const profileRoutes = require('./routes/profile');
+const destinationRoutes = require('./routes/destinations');
 const LocationHistory = require('./models/LocationHistory');
 const Organization = require('./models/Organization');
+const Destination = require('./models/Destination');
 
 const app = express();
 const server = http.createServer(app);
@@ -28,6 +30,7 @@ app.get('/api/health', (_, res) => res.json({ status: 'ok' }));
 app.use('/api/auth', authRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/profile', profileRoutes);
+app.use('/api/destinations', destinationRoutes);
 
 // ─── Socket.io ────────────────────────────────────────
 const io = new Server(server, {
@@ -97,7 +100,9 @@ io.on('connection', (socket) => {
       userSession.lng = lng;
       io.to(organization).emit('org_users', Object.values(activeRooms[organization]));
 
-      // Only save to DB if they moved > 200 meters (or if it's their very first ping)
+      // Geofence Checking (in-memory throttle to avoid DB spam - check every ping, but we'll fetch dests quickly)
+      // For simplicity in this demo, we'll just query Destination if we haven't in a while, or let the admin handle it.
+      // Let's do it on every DB save (>200m) to save resources, plus every time they first join.
       if (distance > 200 || distance === Infinity || !userSession.lastSavedLat) {
         try {
           const org = await Organization.findOne({ name: organization });
@@ -107,9 +112,33 @@ io.on('connection', (socket) => {
               orgId: org._id,
               lat, lng
             });
-            // Update the anchor point
+            // Also store lastSaved to track the 200m jump from the *last saved* point
             userSession.lastSavedLat = lat;
             userSession.lastSavedLng = lng;
+
+            // Geofence Check
+            const dests = await Destination.find({ orgId: org._id });
+            for (const d of dests) {
+              const distToDest = getDistance(lat, lng, d.lat, d.lng);
+              if (distToDest <= d.radius) {
+                // If they just entered, notify. We track notified state in userSession
+                if (!userSession.arrivedDests) userSession.arrivedDests = new Set();
+                if (!userSession.arrivedDests.has(d._id.toString())) {
+                  userSession.arrivedDests.add(d._id.toString());
+                  // Emit to all users in the org (Admins will listen and show a notification)
+                  io.to(organization).emit('geofence_arrival', {
+                    employeeName: userSession.name,
+                    destinationName: d.name,
+                    timestamp: new Date()
+                  });
+                }
+              } else {
+                // If they left, remove from set so it can trigger again later
+                if (userSession.arrivedDests?.has(d._id.toString())) {
+                  userSession.arrivedDests.delete(d._id.toString());
+                }
+              }
+            }
           }
         } catch (e) {
           console.error('Error saving location history:', e.message);

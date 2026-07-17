@@ -16,15 +16,26 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
   const [orgLoading, setOrgLoading] = useState(false);
   const [orgError, setOrgError] = useState('');
   const [focusLocation, setFocusLocation] = useState(null);
+  const [destinations, setDestinations] = useState([]);
 
   const socketRef = useRef(null);
   const watchIdRef = useRef(null);
 
   useEffect(() => {
     if (!user.activeOrganization) return;
+    
+    // Request notification permissions for Geofence alerts
+    if ("Notification" in window && Notification.permission !== "granted") {
+      Notification.requestPermission();
+    }
 
     const token = localStorage.getItem('geo_token');
     
+    // Fetch destinations
+    api(`/api/destinations/${user.activeOrganization}`)
+      .then(data => setDestinations(data))
+      .catch(err => console.error('Failed to load destinations', err));
+
     // Connect to Socket
     socketRef.current = io(BASE_URL, { auth: { token } });
     
@@ -44,6 +55,16 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
         }
       });
       setActiveUsers(Array.from(uniqueUsersMap.values()));
+    });
+
+    socketRef.current.on('geofence_arrival', ({ employeeName, destinationName, timestamp }) => {
+      const msg = `${employeeName} arrived at ${destinationName}`;
+      // Show native browser notification if allowed
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification("Geofence Alert", { body: msg, icon: '/favicon.ico' });
+      }
+      // Also show a simple alert for fallback (in a real app, use toast here)
+      console.log('GEOFENCE ALERT:', msg);
     });
 
     return () => {
@@ -278,7 +299,18 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
             ☰ Menu
           </button>
         )}
-        <Map users={activeUsers.filter(u => u.lat && u.lng)} currentUserId={user.id} focusLocation={focusLocation} />
+        <div className="map-container" style={{ position: 'relative' }}>
+          <Map 
+            users={activeUsers} 
+            currentUserEmail={user.email} 
+            myLocation={activeUsers.find(u => u.email === user.email)}
+            focusLocation={focusLocation}
+            destinations={destinations}
+            userRole={user.role}
+            orgName={user.activeOrganization}
+            onDestinationAdded={(newDest) => setDestinations(prev => [...prev, newDest])}
+          />
+        </div>
       </main>
     </div>
   );
