@@ -13,6 +13,7 @@ const destinationRoutes = require('./routes/destinations');
 const LocationHistory = require('./models/LocationHistory');
 const Organization = require('./models/Organization');
 const Destination = require('./models/Destination');
+const Visit = require('./models/Visit');
 
 const app = express();
 const server = http.createServer(app);
@@ -125,11 +126,19 @@ io.on('connection', (socket) => {
             for (const d of dests) {
               const distToDest = getDistance(lat, lng, d.lat, d.lng);
               if (distToDest <= d.radius) {
-                // If they just entered, notify. We track notified state in userSession
-                if (!userSession.arrivedDests) userSession.arrivedDests = new Set();
+                // If they just entered
+                if (!userSession.arrivedDests) userSession.arrivedDests = new Map();
                 if (!userSession.arrivedDests.has(d._id.toString())) {
-                  userSession.arrivedDests.add(d._id.toString());
-                  // Emit to all users in the org (Admins will listen and show a notification)
+                  // Create Visit in DB
+                  const visit = await Visit.create({
+                    userId: userSession.userId,
+                    orgId: org._id,
+                    destinationId: d._id,
+                    entryTime: new Date()
+                  });
+                  userSession.arrivedDests.set(d._id.toString(), visit._id);
+                  
+                  // Emit to all users in the org
                   io.to(organization).emit('geofence_arrival', {
                     employeeName: userSession.name,
                     destinationName: `${d.tag || 'Location'}: ${d.name}`,
@@ -137,8 +146,12 @@ io.on('connection', (socket) => {
                   });
                 }
               } else {
-                // If they left, remove from set so it can trigger again later
+                // If they left, update Visit and remove from memory
                 if (userSession.arrivedDests?.has(d._id.toString())) {
+                  const visitId = userSession.arrivedDests.get(d._id.toString());
+                  if (visitId) {
+                    await Visit.findByIdAndUpdate(visitId, { exitTime: new Date() }).catch(console.error);
+                  }
                   userSession.arrivedDests.delete(d._id.toString());
                 }
               }
