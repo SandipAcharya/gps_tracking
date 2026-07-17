@@ -199,8 +199,7 @@ router.post('/org/join', async (req, res) => {
     if (org.password !== password) return res.status(401).json({ error: 'Incorrect organization password.' });
 
     const user = await User.findByIdAndUpdate(decoded.userId, {
-      activeOrganization: org._id,
-      role: 'employee'
+      activeOrganization: org._id
     }, { new: true }).populate('activeOrganization');
 
     res.json({

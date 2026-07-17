@@ -196,9 +196,9 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
             <span style={{fontWeight: 700, fontSize: '1.1rem'}}>{user.activeOrganization}</span>
           </div>
           <button
-            className="icon-btn"
+            className="icon-btn mobile-close-btn"
             title="Close sidebar"
-            style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-3)',fontSize:'1.2rem',padding:'0.25rem 0.5rem',borderRadius:'6px'}}
+            style={{display: window.innerWidth <= 768 ? 'block' : 'none', background:'none',border:'none',cursor:'pointer',color:'var(--text-3)',fontSize:'1.2rem',padding:'0.25rem 0.5rem',borderRadius:'6px'}}
             onClick={() => setIsSidebarOpen(false)}
           >✕</button>
         </div>
@@ -285,17 +285,15 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
           <button onClick={onLogout} className="logout-btn">
             <LogOut size={16} /> Log Out
           </button>
-          {user.role === 'admin' && (
-            <button
-              onClick={() => {
-                if (window.confirm('Switch to a different workspace? Your current session will end.'))
-                  onUpdateUser({...user, activeOrganization: null, role: 'none'});
-              }}
-              style={{background:'none',border:'none',color:'var(--text-3)',fontSize:'0.78rem',cursor:'pointer',marginTop:'0.75rem',textDecoration:'underline'}}
-            >
-              Switch Workspace
-            </button>
-          )}
+          <button
+            onClick={() => {
+              if (window.confirm('Switch to a different workspace? Your current session will end.'))
+                onUpdateUser({...user, activeOrganization: null});
+            }}
+            style={{background:'none',border:'none',color:'var(--text-3)',fontSize:'0.78rem',cursor:'pointer',marginTop:'0.75rem',textDecoration:'underline'}}
+          >
+            Switch Workspace
+          </button>
         </div>
       </aside>
 
