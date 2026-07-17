@@ -217,16 +217,23 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
         <div className="sidebar-content">
           {user.role === 'employee' && (
             <div className="clock-in-section" style={{marginBottom: '2rem'}}>
-              <button 
-                className={`clock-btn ${isClockedIn ? 'clocked-out' : 'clocked-in'}`}
-                onClick={toggleClock}
-              >
-                {isClockedIn ? (
-                  <><Square size={20} fill="currentColor"/> STOP TRACKING</>
-                ) : (
-                  <><Play size={20} fill="currentColor"/> CLOCK IN TO SHIFT</>
-                )}
-              </button>
+              {/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? (
+                <button 
+                  className={`clock-btn ${isClockedIn ? 'clocked-out' : 'clocked-in'}`}
+                  onClick={toggleClock}
+                >
+                  {isClockedIn ? (
+                    <><Square size={20} fill="currentColor"/> STOP TRACKING</>
+                  ) : (
+                    <><Play size={20} fill="currentColor"/> CLOCK IN TO SHIFT</>
+                  )}
+                </button>
+              ) : (
+                <div style={{padding: '12px', background: '#fef3c7', color: '#b45309', borderRadius: '8px', fontSize: '0.85rem', textAlign: 'center'}}>
+                  <span style={{fontWeight: 600}}>Desktop View</span><br/>
+                  Tracking is only available on the mobile app.
+                </div>
+              )}
             </div>
           )}
           
