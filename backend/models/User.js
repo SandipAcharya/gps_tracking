@@ -12,7 +12,7 @@ const userSchema = new mongoose.Schema({
   
   // Organization Context
   activeOrganization: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', default: null },
-  role: { type: String, enum: ['admin', 'employee', 'none'], default: 'none' },
+  role: { type: String, enum: ['admin', 'employee', 'none'], default: 'employee' },
 
   // OTP Verification
   otp: { type: String, default: null },
