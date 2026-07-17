@@ -69,6 +69,7 @@ io.on('connection', (socket) => {
       email: userProfile.email,
       phone: userProfile.phone,
       role: userProfile.role,
+      trackingMode: userProfile.trackingMode || 'full',
       lat: null,
       lng: null
     };
@@ -107,11 +108,14 @@ io.on('connection', (socket) => {
         try {
           const org = await Organization.findOne({ name: organization });
           if (org) {
-            await LocationHistory.create({
-              userId: userSession.userId,
-              orgId: org._id,
-              lat, lng
-            });
+            // Only save continuous GPS trail for 'full' tracking mode
+            if (userSession.trackingMode === 'full') {
+              await LocationHistory.create({
+                userId: userSession.userId,
+                orgId: org._id,
+                lat, lng
+              });
+            }
             // Also store lastSaved to track the 200m jump from the *last saved* point
             userSession.lastSavedLat = lat;
             userSession.lastSavedLng = lng;

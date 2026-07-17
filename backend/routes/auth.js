@@ -58,11 +58,13 @@ router.post('/register', async (req, res) => {
       user.password = hashedPassword;
       user.designation = designation;
       user.department = department;
+      user.trackingMode = (department === 'IT & Engineering' || department === 'Finance & Admin') ? 'geofence_only' : 'full';
       user.otp = otp;
       await user.save();
     } else {
+      const trackingMode = (department === 'IT & Engineering' || department === 'Finance & Admin') ? 'geofence_only' : 'full';
       user = await User.create({
-        name, email: email.toLowerCase(), phone, password: hashedPassword, designation, department, otp, isVerified: false
+        name, email: email.toLowerCase(), phone, password: hashedPassword, designation, department, trackingMode, otp, isVerified: false
       });
     }
 

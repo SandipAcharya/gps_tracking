@@ -128,7 +128,15 @@ export default function Register({ onLogin }) {
                   <label>Department <span className="required">*</span></label>
                   <div className="input-icon-wrapper">
                     <Building2 className="input-icon" size={18} />
-                    <input type="text" className="form-input with-icon" placeholder="Sales" value={form.department} onChange={e => handleChange('department', e.target.value)} />
+                    <select className="form-input with-icon" value={form.department} onChange={e => handleChange('department', e.target.value)}>
+                      <option value="" disabled>Select Department</option>
+                      <option value="IT & Engineering">IT & Engineering</option>
+                      <option value="Sales & Business Development">Sales & Business Development</option>
+                      <option value="Marketing">Marketing</option>
+                      <option value="Delivery & Logistics">Delivery & Logistics</option>
+                      <option value="Customer Service">Customer Service</option>
+                      <option value="Finance & Admin">Finance & Admin</option>
+                    </select>
                   </div>
                 </div>
               </div>
