@@ -633,14 +633,24 @@ html, body, #root {
   background: var(--bg);
 }
 
+/* Desktop: sidebar is a fixed-width column that slides off left when closed */
 .sidebar {
   width: 320px;
+  min-width: 320px;
   background: var(--bg-card);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   z-index: 1000;
-  transition: transform 0.3s ease;
+  transition: width 0.3s ease, min-width 0.3s ease, transform 0.3s ease;
+  overflow: hidden;
+}
+
+/* Desktop closed: collapse width to 0, hiding it completely without covering the map */
+.sidebar.closed {
+  width: 0;
+  min-width: 0;
+  border-right: none;
 }
 
 .sidebar-header {
@@ -649,18 +659,25 @@ html, body, #root {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .org-brand {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .sidebar-user-card {
   padding: 1.5rem;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  overflow: hidden;
 }
 
 .user-info {
@@ -680,6 +697,7 @@ html, body, #root {
   justify-content: center;
   font-weight: 700;
   font-size: 1.2rem;
+  flex-shrink: 0;
 }
 
 .sidebar-content {
@@ -716,15 +734,8 @@ html, body, #root {
   color: white;
 }
 
-.clock-btn.clocked-in {
-  background: #10b981;
-  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
-}
-
-.clock-btn.clocked-out {
-  background: #ef4444;
-  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
-}
+.clock-btn.clocked-in { background: #10b981; box-shadow: 0 4px 15px rgba(16,185,129,0.3); }
+.clock-btn.clocked-out { background: #ef4444; box-shadow: 0 4px 15px rgba(239,68,68,0.3); }
 
 .admin-tools {
   background: var(--bg);
@@ -743,24 +754,18 @@ html, body, #root {
 }
 .user-item:last-child { border-bottom: none; }
 
-.status-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
+.status-dot { width: 10px; height: 10px; border-radius: 50%; }
 .status-dot.active { background: #10b981; box-shadow: 0 0 8px rgba(16,185,129,0.5); }
 .status-dot.idle { background: var(--text-3); }
 
-.user-details {
-  display: flex;
-  flex-direction: column;
-}
+.user-details { display: flex; flex-direction: column; }
 .user-name { font-weight: 600; font-size: 0.9rem; color: var(--text); }
 .user-role { font-size: 0.75rem; color: var(--text-3); }
 
 .sidebar-footer {
   padding: 1.5rem;
   border-top: 1px solid var(--border);
+  flex-shrink: 0;
 }
 
 .logout-btn {
@@ -779,15 +784,21 @@ html, body, #root {
   transition: all 0.2s;
 }
 .logout-btn:hover {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(239,68,68,0.1);
   color: var(--danger);
-  border-color: rgba(239, 68, 68, 0.3);
+  border-color: rgba(239,68,68,0.3);
+}
+
+/* Mobile backdrop overlay */
+@media (max-width: 768px) {
+  .mobile-overlay { display: block !important; }
 }
 
 .map-area {
   flex: 1;
   position: relative;
   height: 100%;
+  overflow: hidden;
 }
 
 .menu-toggle-btn {
@@ -801,18 +812,34 @@ html, body, #root {
   border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
+  color: var(--primary);
   box-shadow: var(--shadow-sm);
 }
 
+/* Mobile: sidebar overlays on top of map as a full-screen drawer */
 @media (max-width: 768px) {
   .sidebar {
     position: fixed;
-    height: 100%;
-    left: 0;
     top: 0;
+    left: 0;
+    height: 100%;
+    width: 85vw;
+    min-width: unset;
+    max-width: 360px;
+    z-index: 3000;
+    transform: translateX(0);
+    transition: transform 0.3s ease;
   }
-  .sidebar.closed { transform: translateX(-100%); }
-  .menu-toggle-btn { display: block; }
+  .sidebar.closed {
+    transform: translateX(-100%);
+    width: 85vw; /* keep DOM width, just slide off-screen */
+    min-width: unset;
+    border-right: 1px solid var(--border);
+  }
+  .map-area {
+    width: 100vw;
+    height: 100vh;
+  }
 }
 
 .leaflet-popup-content-wrapper {
@@ -860,20 +887,4 @@ html, body, #root {
 ::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
 
 /* ─── Mobile Overrides ───────────────────────────────── */
-@media (max-width: 768px) {
-  .dashboard-layout {
-    flex-direction: column;
-  }
-  .sidebar {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100vh;
-    z-index: 2000;
-  }
-  .map-container {
-    height: 100vh;
-    width: 100%;
-  }
-}
+/* (Handled above in the sidebar media query block) */

@@ -196,10 +196,11 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
             <span style={{fontWeight: 700, fontSize: '1.1rem'}}>{user.activeOrganization}</span>
           </div>
           <button
-            className="icon-btn mobile-close-btn"
             title="Close sidebar"
-            style={{display: window.innerWidth <= 768 ? 'block' : 'none', background:'none',border:'none',cursor:'pointer',color:'var(--text-3)',fontSize:'1.2rem',padding:'0.25rem 0.5rem',borderRadius:'6px'}}
+            style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-3)',fontSize:'1.25rem',lineHeight:1,padding:'0.35rem 0.5rem',borderRadius:'6px',transition:'color 0.2s'}}
             onClick={() => setIsSidebarOpen(false)}
+            onMouseOver={e => e.currentTarget.style.color='var(--text)'}
+            onMouseOut={e => e.currentTarget.style.color='var(--text-3)'}
           >✕</button>
         </div>
 
@@ -297,13 +298,26 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
         </div>
       </aside>
 
+      {/* Mobile overlay backdrop - clicking it closes the menu */}
+      {isSidebarOpen && (
+        <div 
+          onClick={() => setIsSidebarOpen(false)}
+          style={{
+            display: 'none',
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+            zIndex: 2999,
+          }}
+          className="mobile-overlay"
+        />
+      )}
+
       <main className="map-area">
         {!isSidebarOpen && (
           <button className="menu-toggle-btn" onClick={() => setIsSidebarOpen(true)}>
             ☰ Menu
           </button>
         )}
-        <div className="map-container" style={{ position: 'relative' }}>
+        <div className="map-container" style={{ position: 'relative', height: '100%', width: '100%' }}>
           <Map 
             users={activeUsers} 
             currentUserEmail={user.email} 
