@@ -83,7 +83,8 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
         method: 'POST',
         body: JSON.stringify(orgForm)
       });
-      onUpdateUser(data.user);
+      // Force a hard reload so all socket connections and layout state cleanly reset to the new organization
+      window.location.reload();
     } catch (err) {
       setOrgError(err.message);
     } finally {
@@ -238,12 +239,17 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
           <div className="active-users-list">
             <h3 className="section-title">Active Fleet ({activeUsers.filter(u => u.lat).length}/{activeUsers.length})</h3>
             <div className="users-scroll">
-              {activeUsers.map(u => (
+              {activeUsers
+                .filter(u => user.role === 'admin' || u.role !== 'admin')
+                .map(u => (
                 <div 
                   key={u.socketId} 
                   className="user-item" 
                   style={{cursor: u.lat ? 'pointer' : 'default', padding: '10px 12px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '12px'}}
-                  onClick={() => { if (u.lat && u.lng) setFocusLocation({ lat: u.lat, lng: u.lng }); }}
+                  onClick={() => { 
+                    if (u.lat && u.lng) setFocusLocation({ lat: u.lat, lng: u.lng });
+                    if (window.innerWidth <= 768) setIsSidebarOpen(false); // Close sidebar on mobile
+                  }}
                 >
                   <div style={{ position: 'relative' }}>
                     <img 
