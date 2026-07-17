@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
 import { Link } from 'react-router-dom';
 import { Mail, Lock, Phone } from 'lucide-react';
@@ -9,6 +9,12 @@ export default function Login({ onLogin }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isEmail, setIsEmail] = useState(true);
+
+  // Clear form on mount to prevent browser back-button caching
+  useEffect(() => {
+    setIdentifier('');
+    setPassword('');
+  }, []);
 
   const handleIdentifierChange = (val) => {
     setIdentifier(val);
@@ -52,7 +58,7 @@ export default function Login({ onLogin }) {
           </div>
         </div>
 
-        <form onSubmit={handleLogin} className="auth-form">
+        <form onSubmit={handleLogin} className="auth-form" autoComplete="off">
           <div className="form-header">
             <h2>Welcome</h2>
             <p>Log in to your account to continue</p>
@@ -87,6 +93,7 @@ export default function Login({ onLogin }) {
                 type="password"
                 className="form-input with-icon"
                 placeholder="••••••••"
+                autoComplete="new-password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
               />

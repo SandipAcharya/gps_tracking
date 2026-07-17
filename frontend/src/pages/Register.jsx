@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../utils/api';
 import { Building2, User, Mail, Lock, Phone, Briefcase } from 'lucide-react';
@@ -12,6 +12,11 @@ export default function Register({ onLogin }) {
   const [error, setError] = useState('');
 
   const [step, setStep] = useState('form');
+
+  // Clear form on mount to prevent browser back-button caching (security)
+  useEffect(() => {
+    setForm({ name: '', email: '', phone: '', password: '', designation: '', department: '' });
+  }, []);
 
   const handleChange = (key, val) => setForm(f => ({ ...f, [key]: val }));
 
@@ -69,7 +74,7 @@ export default function Register({ onLogin }) {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="auth-form">
+        <form onSubmit={handleSubmit} className="auth-form" autoComplete="off">
           {step === 'form' ? (
             <>
               <div className="form-header">
@@ -106,7 +111,7 @@ export default function Register({ onLogin }) {
                   <label>Password <span className="required">*</span></label>
                   <div className="input-icon-wrapper">
                     <Lock className="input-icon" size={18} />
-                    <input type="password" className="form-input with-icon" placeholder="••••••••" value={form.password} onChange={e => handleChange('password', e.target.value)} />
+                    <input type="password" name="new-password" autoComplete="new-password" className="form-input with-icon" placeholder="••••••••" value={form.password} onChange={e => handleChange('password', e.target.value)} />
                   </div>
                 </div>
               </div>
@@ -133,6 +138,7 @@ export default function Register({ onLogin }) {
               <div className="form-header">
                 <h2>Verify Email</h2>
                 <p>We've sent a 6-digit OTP to <strong>{form.email}</strong>. Please enter it below.</p>
+                <p style={{fontSize: '0.85rem', color: '#ea580c', marginTop: '0.5rem', fontWeight: 500}}>⚠️ Check your Spam/Junk folder explicitly if you don't see it in your inbox.</p>
               </div>
               <div className="input-group" style={{alignItems: 'center'}}>
                 <input type="text" className="form-input" style={{textAlign: 'center', letterSpacing: '8px', fontSize: '1.5rem', fontWeight: 700}} placeholder="000000" maxLength={6} value={form.otp || ''} onChange={e => handleChange('otp', e.target.value)} autoFocus />
