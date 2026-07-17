@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
-import { MapContainer, TileLayer, Polyline, Marker, Popup, useMap } from 'react-router-dom'; // Wait, need to use react-leaflet, fixing imports
-import * as reactLeaflet from 'react-leaflet';
-const { MapContainer: MapCont, TileLayer: TileL, Polyline: PolyL, Marker: MarkL, Popup: PopL } = reactLeaflet;
+import { MapContainer as MapCont, TileLayer as TileL, Polyline as PolyL, Marker as MarkL, Popup as PopL } from 'react-leaflet';
 import { ArrowLeft, User, Phone, Mail, Briefcase, Building2 } from 'lucide-react';
 import { getUserColor } from '../utils/colors';
 

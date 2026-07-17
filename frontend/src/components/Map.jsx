@@ -82,7 +82,7 @@ const MapClickHandler = ({ userRole, orgName, onDestinationAdded }) => {
             name,
             lat: e.latlng.lat,
             lng: e.latlng.lng,
-            radius: 200
+            radius: 50
           })
         });
         if (response.ok) {

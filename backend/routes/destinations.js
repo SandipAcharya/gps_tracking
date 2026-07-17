@@ -41,7 +41,7 @@ router.post('/', verifyToken, async (req, res) => {
     const org = await Organization.findOne({ name: orgName });
     if (!org) return res.status(404).json({ error: 'Organization not found' });
 
-    const dest = new Destination({ orgId: org._id, name, lat, lng, radius: radius || 200 });
+    const dest = new Destination({ orgId: org._id, name, lat, lng, radius: radius || 50 });
     await dest.save();
 
     res.status(201).json(dest);
