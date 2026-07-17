@@ -8,6 +8,7 @@ const jwt = require('jsonwebtoken');
 
 const authRoutes = require('./routes/auth');
 const roomRoutes = require('./routes/rooms');
+const profileRoutes = require('./routes/profile');
 const LocationHistory = require('./models/LocationHistory');
 const Organization = require('./models/Organization');
 
@@ -26,6 +27,7 @@ app.use(express.json());
 app.get('/api/health', (_, res) => res.json({ status: 'ok' }));
 app.use('/api/auth', authRoutes);
 app.use('/api/rooms', roomRoutes);
+app.use('/api/profile', profileRoutes);
 
 // ─── Socket.io ────────────────────────────────────────
 const io = new Server(server, {

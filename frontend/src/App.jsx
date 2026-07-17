@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import Profile from './pages/Profile';
 import api from './utils/api';
 
 function App() {
@@ -63,6 +64,11 @@ function App() {
         <Route path="/dashboard" element={
           !user ? <Navigate to="/" /> :
           <Dashboard user={user} onLogout={handleLogout} onUpdateUser={setUser} />
+        } />
+
+        <Route path="/profile/:id" element={
+          !user ? <Navigate to="/" /> :
+          <Profile currentUser={user} />
         } />
       </Routes>
     </Router>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import Map from '../components/Map';
 import api, { BASE_URL } from '../utils/api';
@@ -238,7 +239,9 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
                   </div>
                   <div className="user-details" style={{flex:1}}>
                     <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
-                      <span className="user-name" style={{fontWeight: 600}}>{u.name}</span>
+                      <Link to={`/profile/${u.userId}`} className="user-name" style={{fontWeight: 600, color: 'var(--text-1)', textDecoration: 'none'}}>
+                        {u.name}
+                      </Link>
                       {u.role === 'admin' && (
                         <span style={{fontSize:'0.6rem',background:'#ede9fe',color:'#7c3aed',padding:'2px 6px',borderRadius:'4px',fontWeight:700,letterSpacing:'0.03em'}}>ADMIN</span>
                       )}
