@@ -132,7 +132,7 @@ io.on('connection', (socket) => {
                   // Emit to all users in the org (Admins will listen and show a notification)
                   io.to(organization).emit('geofence_arrival', {
                     employeeName: userSession.name,
-                    destinationName: d.name,
+                    destinationName: `${d.tag || 'Location'}: ${d.name}`,
                     timestamp: new Date()
                   });
                 }

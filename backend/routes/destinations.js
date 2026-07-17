@@ -35,13 +35,13 @@ router.get('/:orgName', verifyToken, async (req, res) => {
 // Create a new destination (Admin only)
 router.post('/', verifyToken, async (req, res) => {
   try {
-    const { orgName, name, lat, lng, radius } = req.body;
+    const { orgName, name, lat, lng, radius, tag } = req.body;
     if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
 
     const org = await Organization.findOne({ name: orgName });
     if (!org) return res.status(404).json({ error: 'Organization not found' });
 
-    const dest = new Destination({ orgId: org._id, name, lat, lng, radius: radius || 50 });
+    const dest = new Destination({ orgId: org._id, name, lat, lng, radius: radius || 50, tag: tag || 'Other' });
     await dest.save();
 
     res.status(201).json(dest);

@@ -76,6 +76,11 @@ const MapClickHandler = ({ userRole, orgName, onDestinationAdded }) => {
       const name = window.prompt("Enter destination name for Geofence:");
       if (!name) return;
       
+      let tag = window.prompt("Enter destination type (Client Site, Office, Warehouse, Restricted Zone, Other):", "Client Site");
+      if (!['Client Site', 'Office', 'Warehouse', 'Restricted Zone', 'Other'].includes(tag)) {
+        tag = 'Other';
+      }
+      
       try {
         const response = await fetch('/api/destinations', {
           method: 'POST',
@@ -88,7 +93,8 @@ const MapClickHandler = ({ userRole, orgName, onDestinationAdded }) => {
             name,
             lat: e.latlng.lat,
             lng: e.latlng.lng,
-            radius: 50
+            radius: 50,
+            tag
           })
         });
         if (response.ok) {
@@ -135,6 +141,7 @@ const Map = ({ users = [], currentUserEmail, myLocation, focusLocation, destinat
           pathOptions={{ color: '#ec4899', fillColor: '#ec4899', fillOpacity: 0.2 }}
         >
           <Popup>
+            <div style={{fontSize: '0.75rem', color: '#ec4899', fontWeight: 700, textTransform: 'uppercase', marginBottom: '2px'}}>{d.tag || 'Destination'}</div>
             <strong>{d.name}</strong><br/>
             Geofence Radius: {d.radius}m
           </Popup>
