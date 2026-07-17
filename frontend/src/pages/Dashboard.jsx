@@ -327,6 +327,7 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
             userRole={user.role}
             orgName={user.activeOrganization}
             onDestinationAdded={(newDest) => setDestinations(prev => [...prev, newDest])}
+            sidebarOpen={isSidebarOpen}
           />
         </div>
       </main>

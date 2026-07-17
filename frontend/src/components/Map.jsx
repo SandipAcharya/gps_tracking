@@ -47,8 +47,14 @@ const InitialCenter = ({ lat, lng }) => {
 };
 
 // ─── Fix map size when container resizes ─────────────
-const ResizeFix = () => {
+const ResizeFix = ({ sidebarOpen }) => {
   const map = useMap();
+  useEffect(() => {
+    // Invalidate on sidebar toggle (wait for CSS transition: 300ms)
+    const timer = setTimeout(() => map.invalidateSize(), 350);
+    return () => clearTimeout(timer);
+  }, [sidebarOpen, map]);
+
   useEffect(() => {
     const observer = new ResizeObserver(() => {
       setTimeout(() => map.invalidateSize(), 50);
@@ -98,7 +104,7 @@ const MapClickHandler = ({ userRole, orgName, onDestinationAdded }) => {
 };
 
 // ─── Main Map Component ───────────────────────────────
-const Map = ({ users = [], currentUserEmail, myLocation, focusLocation, destinations = [], userRole, orgName, onDestinationAdded }) => {
+const Map = ({ users = [], currentUserEmail, myLocation, focusLocation, destinations = [], userRole, orgName, onDestinationAdded, sidebarOpen }) => {
   const defaultCenter = [27.7172, 85.3240]; // Kathmandu
   const center = myLocation ? [myLocation.lat, myLocation.lng] : defaultCenter;
 
@@ -109,7 +115,7 @@ const Map = ({ users = [], currentUserEmail, myLocation, focusLocation, destinat
       style={{ height: '100%', width: '100%' }}
       zoomControl={false}
     >
-      <ResizeFix />
+      <ResizeFix sidebarOpen={sidebarOpen} />
       <TileLayer
         attribution='&copy; Google Maps'
         url='https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}'
