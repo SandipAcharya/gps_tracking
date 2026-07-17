@@ -220,23 +220,30 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
                 <div 
                   key={u.socketId} 
                   className="user-item" 
-                  style={{cursor: u.lat ? 'pointer' : 'default'}}
+                  style={{cursor: u.lat ? 'pointer' : 'default', padding: '10px 12px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '12px'}}
                   onClick={() => { if (u.lat && u.lng) setFocusLocation({ lat: u.lat, lng: u.lng }); }}
                 >
-                  <div style={{
-                    width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
-                    background: getUserColor(u.role, u.name),
-                    boxShadow: u.lat ? `0 0 6px ${getUserColor(u.role, u.name)}` : 'none',
-                    opacity: u.lat ? 1 : 0.35
-                  }}></div>
+                  <div style={{ position: 'relative' }}>
+                    <img 
+                      src={u.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&background=random&color=fff&bold=true`} 
+                      alt={u.name}
+                      style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${getUserColor(u.role, u.name)}` }}
+                    />
+                    <div style={{
+                      position: 'absolute', bottom: '-2px', right: '-2px',
+                      width: 12, height: 12, borderRadius: '50%', border: '2px solid white',
+                      background: u.lat ? '#10b981' : '#9ca3af',
+                      boxShadow: u.lat ? `0 0 6px #10b981` : 'none',
+                    }}></div>
+                  </div>
                   <div className="user-details" style={{flex:1}}>
                     <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
-                      <span className="user-name">{u.name}</span>
+                      <span className="user-name" style={{fontWeight: 600}}>{u.name}</span>
                       {u.role === 'admin' && (
-                        <span style={{fontSize:'0.6rem',background:'#ede9fe',color:'#7c3aed',padding:'1px 5px',borderRadius:'99px',fontWeight:700,letterSpacing:'0.03em'}}>ADMIN</span>
+                        <span style={{fontSize:'0.6rem',background:'#ede9fe',color:'#7c3aed',padding:'2px 6px',borderRadius:'4px',fontWeight:700,letterSpacing:'0.03em'}}>ADMIN</span>
                       )}
                     </div>
-                    <span className="user-role">{u.lat ? u.designation || u.role : 'Offline'}</span>
+                    <span className="user-role" style={{fontSize: '0.8rem', color: '#6b7280'}}>{u.lat ? u.designation || u.role : 'Offline'}</span>
                   </div>
                 </div>
               ))}

@@ -94,7 +94,11 @@ const Map = ({ users, currentUserEmail, myLocation, focusLocation }) => {
             <Popup>
               <div style={{ minWidth: 140 }}>
                 <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'4px'}}>
-                  <div style={{width:10,height:10,borderRadius:'50%',background: getUserColor(u.role, u.name),flexShrink:0}}></div>
+                  <img 
+                    src={u.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&background=random&color=fff&bold=true`} 
+                    alt={u.name}
+                    style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${getUserColor(u.role, u.name)}` }}
+                  />
                   <strong>{u.name}</strong>
                   {u.role === 'admin' && <span style={{fontSize:'0.65rem',background:'#ede9fe',color:'#7c3aed',padding:'1px 6px',borderRadius:'99px',fontWeight:700}}>ADMIN</span>}
                 </div>
