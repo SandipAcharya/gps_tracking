@@ -8,6 +8,8 @@ const jwt = require('jsonwebtoken');
 
 const authRoutes = require('./routes/auth');
 const roomRoutes = require('./routes/rooms');
+const LocationHistory = require('./models/LocationHistory');
+const Organization = require('./models/Organization');
 
 const app = express();
 const server = http.createServer(app);
@@ -70,11 +72,47 @@ io.on('connection', (socket) => {
     console.log(`${userProfile.name} joined org: ${organization}`);
   });
 
-  socket.on('update_location', ({ organization, lat, lng }) => {
-    if (activeRooms[organization]?.[socket.id]) {
-      activeRooms[organization][socket.id].lat = lat;
-      activeRooms[organization][socket.id].lng = lng;
+  // Helper for Haversine distance in meters
+  const getDistance = (lat1, lon1, lat2, lon2) => {
+    if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
+    const R = 6371e3; // Earth radius in meters
+    const rad = Math.PI / 180;
+    const dLat = (lat2 - lat1) * rad;
+    const dLon = (lon2 - lon1) * rad;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * rad) * Math.cos(lat2 * rad) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  };
+
+  socket.on('update_location', async ({ organization, lat, lng }) => {
+    const userSession = activeRooms[organization]?.[socket.id];
+    if (userSession) {
+      // Compare against the last point we SAVED to the DB, not just the last ping
+      const distance = getDistance(userSession.lastSavedLat || userSession.lat, userSession.lastSavedLng || userSession.lng, lat, lng);
+      
+      userSession.lat = lat;
+      userSession.lng = lng;
       io.to(organization).emit('org_users', Object.values(activeRooms[organization]));
+
+      // Only save to DB if they moved > 200 meters (or if it's their very first ping)
+      if (distance > 200 || distance === Infinity || !userSession.lastSavedLat) {
+        try {
+          const org = await Organization.findOne({ name: organization });
+          if (org) {
+            await LocationHistory.create({
+              userId: userSession.userId,
+              orgId: org._id,
+              lat, lng
+            });
+            // Update the anchor point
+            userSession.lastSavedLat = lat;
+            userSession.lastSavedLng = lng;
+          }
+        } catch (e) {
+          console.error('Error saving location history:', e.message);
+        }
+      }
     }
   });
 

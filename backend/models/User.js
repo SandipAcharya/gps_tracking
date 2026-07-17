@@ -7,6 +7,7 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   designation: { type: String, required: true },
   department: { type: String, required: true },
+  avatar: { type: String, default: null },
   
   // Organization Context
   activeOrganization: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', default: null },
