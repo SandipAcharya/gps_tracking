@@ -646,11 +646,9 @@ html, body, #root {
   overflow: hidden;
 }
 
-/* Desktop closed: collapse width to 0, hiding it completely without covering the map */
+/* Desktop closed: completely remove from layout flow */
 .sidebar.closed {
-  width: 0;
-  min-width: 0;
-  border-right: none;
+  display: none;
 }
 
 .sidebar-header {
@@ -819,6 +817,7 @@ html, body, #root {
 /* Mobile: sidebar overlays on top of map as a full-screen drawer */
 @media (max-width: 768px) {
   .sidebar {
+    display: flex !important; /* override the desktop display:none */
     position: fixed;
     top: 0;
     left: 0;
@@ -831,9 +830,8 @@ html, body, #root {
     transition: transform 0.3s ease;
   }
   .sidebar.closed {
+    display: flex !important; /* stay in DOM so animation works */
     transform: translateX(-100%);
-    width: 85vw; /* keep DOM width, just slide off-screen */
-    min-width: unset;
     border-right: 1px solid var(--border);
   }
   .map-area {
