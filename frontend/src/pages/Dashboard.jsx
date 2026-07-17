@@ -215,7 +215,7 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
         </div>
 
         <div className="sidebar-content">
-          {user.role === 'employee' && (
+          {user.role !== 'admin' && (
             <div className="clock-in-section" style={{marginBottom: '2rem'}}>
               {/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? (
                 <button 
