@@ -233,7 +233,7 @@ const Map = ({ users = [], currentUserEmail, myLocation, focusLocation, destinat
             iconAnchor: [8, 8]
           })}
         >
-          <Popup>
+          <Popup onClose={() => setSearchLocation(null)}>
             <div style={{fontSize: '0.75rem', color: '#ef4444', fontWeight: 700}}>SEARCH RESULT</div>
             <strong>{searchLocation.name}</strong><br/>
             <span style={{fontSize: '0.75rem', color: '#6b7280'}}>Click near here to add geofence</span>
