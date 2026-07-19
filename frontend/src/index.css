@@ -833,12 +833,14 @@ html, body, #root {
   max-width: 400px;
 }
 
-/* Mobile: push search bar below Menu button, full-width sidebar */
+/* Mobile: sit right next to the Menu button, same row */
 @media (max-width: 768px) {
   .map-search-bar {
-    top: 62px;
-    width: calc(100% - 2rem);
-    max-width: none;
+    top: 1rem;
+    left: 90px;
+    transform: none;
+    width: calc(100% - 100px);
+    max-width: 260px;
   }
   .sidebar {
     width: 100vw;
