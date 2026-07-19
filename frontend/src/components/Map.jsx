@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, Circle, useMap, useMapEvents } 
 import L from 'leaflet';
 import { getUserColor, getEmployeeColor } from '../utils/colors';
 import { BASE_URL } from '../utils/api';
-import { Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 // ─── Custom Marker Icon ───────────────────────────────
 const createCustomIcon = (role, isMe, name) => {
   const color = getUserColor(role, name, isMe);
@@ -145,7 +145,7 @@ const MapSearch = ({ onLocationSelected }) => {
     map.flyTo([lat, lon], 17, { animate: true, duration: 1.5 });
     if (onLocationSelected) onLocationSelected({ lat, lon, name });
     setResults([]);
-    setQuery('');
+    setQuery(name); // Keep the selected name in the input box
   };
 
   const containerRef = useRef(null);
@@ -169,10 +169,26 @@ const MapSearch = ({ onLocationSelected }) => {
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
-            if (!e.target.value) setResults([]);
+            if (!e.target.value) {
+              setResults([]);
+              if (onLocationSelected) onLocationSelected(null);
+            }
           }}
           style={{ flex: 1, border: 'none', padding: '12px 16px', outline: 'none', fontSize: '0.95rem' }}
         />
+        {query && (
+          <button 
+            type="button" 
+            onClick={() => {
+              setQuery('');
+              setResults([]);
+              if (onLocationSelected) onLocationSelected(null);
+            }}
+            style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '0 8px' }}
+          >
+            <X size={16} />
+          </button>
+        )}
         <button type="submit" disabled={isSearching} style={{ background: '#4f46e5', color: 'white', border: 'none', padding: '0 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Search size={18} style={{ opacity: isSearching ? 0.5 : 1 }} />
         </button>
