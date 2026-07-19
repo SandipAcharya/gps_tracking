@@ -147,8 +147,17 @@ const MapSearch = () => {
     setQuery('');
   };
 
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      L.DomEvent.disableClickPropagation(containerRef.current);
+      L.DomEvent.disableScrollPropagation(containerRef.current);
+    }
+  }, []);
+
   return (
-    <div style={{
+    <div ref={containerRef} style={{
       position: 'absolute', top: '15px', left: '50%', transform: 'translateX(-50%)',
       zIndex: 1000, width: '90%', maxWidth: '400px'
     }}>
