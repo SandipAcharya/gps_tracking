@@ -186,7 +186,7 @@ const MapSearch = ({ onLocationSelected }) => {
             <X size={16} />
           </button>
         )}
-        <button type="submit" disabled={isSearching} style={{ background: '#4f46e5', color: 'white', border: 'none', padding: '0 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <button type="submit" disabled={isSearching} style={{ background: '#4f46e5', color: 'white', border: 'none', width: '44px', minWidth: '44px', height: '44px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <Search size={18} style={{ opacity: isSearching ? 0.5 : 1 }} />
         </button>
       </form>
