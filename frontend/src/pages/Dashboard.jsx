@@ -4,7 +4,7 @@ import { io } from 'socket.io-client';
 import Map from '../components/Map';
 import api, { BASE_URL } from '../utils/api';
 import { getUserColor } from '../utils/colors';
-import { LogOut, Play, Square, Building2, Key } from 'lucide-react';
+import { LogOut, Play, Square, Building2, Key, Trash2, MapPin, Eye, EyeOff } from 'lucide-react';
 
 export default function Dashboard({ user, onLogout, onUpdateUser }) {
   const [activeUsers, setActiveUsers] = useState([]);
@@ -17,6 +17,19 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
   const [orgError, setOrgError] = useState('');
   const [focusLocation, setFocusLocation] = useState(null);
   const [destinations, setDestinations] = useState([]);
+  const [showEmployees, setShowEmployees] = useState(true);
+  const [showGeofences, setShowGeofences] = useState(true);
+
+  const handleDeleteGeofence = async (id) => {
+    if (!window.confirm("Delete this geofence?")) return;
+    try {
+      await api(`/api/destinations/${id}`, { method: 'DELETE' });
+      setDestinations(prev => prev.filter(d => d._id !== id));
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete geofence");
+    }
+  };
 
   const socketRef = useRef(null);
   const watchIdRef = useRef(null);
@@ -279,7 +292,69 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
                 </div>
               ))}
             </div>
+            </div>
           </div>
+
+          {/* Map Filters */}
+          <div className="map-filters" style={{marginTop: '2rem', borderTop: '1px solid #f1f5f9', paddingTop: '1.5rem'}}>
+            <h3 className="section-title">Map Filters</h3>
+            <div style={{display: 'flex', gap: '1rem', marginTop: '1rem'}}>
+              <button 
+                onClick={() => setShowEmployees(!showEmployees)}
+                style={{flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '8px', borderRadius: '6px', border: `1px solid ${showEmployees ? '#10b981' : '#d1d5db'}`, background: showEmployees ? '#ecfdf5' : '#f9fafb', color: showEmployees ? '#065f46' : '#6b7280', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600}}
+              >
+                {showEmployees ? <Eye size={16}/> : <EyeOff size={16}/>}
+                Employees
+              </button>
+              <button 
+                onClick={() => setShowGeofences(!showGeofences)}
+                style={{flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '8px', borderRadius: '6px', border: `1px solid ${showGeofences ? '#ec4899' : '#d1d5db'}`, background: showGeofences ? '#fdf2f8' : '#f9fafb', color: showGeofences ? '#9d174d' : '#6b7280', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600}}
+              >
+                {showGeofences ? <Eye size={16}/> : <EyeOff size={16}/>}
+                Geofences
+              </button>
+            </div>
+          </div>
+
+          {/* Geofences Management (Admin Only) */}
+          {user.role === 'admin' && (
+            <div className="geofences-list" style={{marginTop: '2rem', borderTop: '1px solid #f1f5f9', paddingTop: '1.5rem'}}>
+              <h3 className="section-title">Workspace Geofences ({destinations.length})</h3>
+              {destinations.length === 0 ? (
+                <div style={{fontSize: '0.8rem', color: '#9ca3af', padding: '1rem 0'}}>
+                  No geofences created. Click on the map to add one.
+                </div>
+              ) : (
+                <div className="users-scroll" style={{maxHeight: '200px'}}>
+                  {destinations.map(d => (
+                    <div 
+                      key={d._id} 
+                      style={{display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer'}}
+                      onClick={() => {
+                        setFocusLocation({ lat: d.lat, lng: d.lng });
+                        if (window.innerWidth <= 768) setIsSidebarOpen(false);
+                      }}
+                    >
+                      <div style={{background: '#fdf2f8', color: '#ec4899', padding: '8px', borderRadius: '8px'}}>
+                        <MapPin size={18} />
+                      </div>
+                      <div style={{flex: 1}}>
+                        <div style={{fontWeight: 600, color: 'var(--text-1)', fontSize: '0.9rem'}}>{d.name}</div>
+                        <div style={{fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase'}}>{d.tag || 'Location'}</div>
+                      </div>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleDeleteGeofence(d._id); }}
+                        style={{background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px'}}
+                        title="Delete Geofence"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="sidebar-footer">
@@ -321,11 +396,11 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
         )}
         <div style={{ position: 'absolute', inset: 0 }}>
           <Map 
-            users={activeUsers} 
+            users={showEmployees ? activeUsers : []} 
             currentUserEmail={user.email} 
             myLocation={activeUsers.find(u => u.email === user.email)}
             focusLocation={focusLocation}
-            destinations={destinations}
+            destinations={showGeofences ? destinations : []}
             userRole={user.role}
             orgName={user.activeOrganization}
             onDestinationAdded={(newDest) => setDestinations(prev => [...prev, newDest])}
