@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { getUserColor, getEmployeeColor } from '../utils/colors';
+import { BASE_URL } from '../utils/api';
 
 // ─── Custom Marker Icon ───────────────────────────────
 const createCustomIcon = (role, isMe, name) => {
@@ -70,6 +71,7 @@ const ResizeFix = ({ sidebarOpen }) => {
 
 // ─── Destination Click Handler ───────────────────────
 const MapClickHandler = ({ userRole, orgName, onDestinationAdded }) => {
+  const map = useMap();
   useMapEvents({
     async click(e) {
       if (userRole !== 'admin') return;
@@ -82,11 +84,12 @@ const MapClickHandler = ({ userRole, orgName, onDestinationAdded }) => {
       }
       
       try {
-        const response = await fetch('/api/destinations', {
+        const token = localStorage.getItem('geo_token');
+        const response = await fetch(`${BASE_URL}/api/destinations`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('geo_token')}`
+            'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify({
             orgName,
@@ -100,9 +103,15 @@ const MapClickHandler = ({ userRole, orgName, onDestinationAdded }) => {
         if (response.ok) {
           const newDest = await response.json();
           if (onDestinationAdded) onDestinationAdded(newDest);
+          // Auto-fly to the newly created geofence so admin can confirm it
+          map.flyTo([e.latlng.lat, e.latlng.lng], 17, { animate: true, duration: 1.0 });
+        } else {
+          const err = await response.json();
+          alert(`Failed to save geofence: ${err.error || 'Unknown error'}`);
         }
       } catch (err) {
         console.error('Failed to add destination', err);
+        alert('Network error — could not save geofence. Check your connection.');
       }
     }
   });
@@ -133,20 +142,30 @@ const Map = ({ users = [], currentUserEmail, myLocation, focusLocation, destinat
       <MapClickHandler userRole={userRole} orgName={orgName} onDestinationAdded={onDestinationAdded} />
 
       {/* Render Destinations (Geofences) */}
-      {destinations.map(d => (
-        <Circle 
-          key={d._id} 
-          center={[d.lat, d.lng]} 
-          radius={d.radius} 
-          pathOptions={{ color: '#ec4899', fillColor: '#ec4899', fillOpacity: 0.2 }}
-        >
-          <Popup>
-            <div style={{fontSize: '0.75rem', color: '#ec4899', fontWeight: 700, textTransform: 'uppercase', marginBottom: '2px'}}>{d.tag || 'Destination'}</div>
-            <strong>{d.name}</strong><br/>
-            Geofence Radius: {d.radius}m
-          </Popup>
-        </Circle>
-      ))}
+      {destinations.map(d => {
+        const geofenceIcon = L.divIcon({
+          className: '',
+          html: `<div style="width:12px;height:12px;background:#ec4899;border-radius:50%;border:2px solid white;box-shadow:0 0 6px rgba(236,72,153,0.8);"></div>`,
+          iconSize: [12, 12],
+          iconAnchor: [6, 6],
+        });
+        return (
+          <React.Fragment key={d._id}>
+            <Circle
+              center={[d.lat, d.lng]}
+              radius={d.radius}
+              pathOptions={{ color: '#ec4899', fillColor: '#ec4899', fillOpacity: 0.2, weight: 2 }}
+            />
+            <Marker position={[d.lat, d.lng]} icon={geofenceIcon}>
+              <Popup>
+                <div style={{fontSize: '0.75rem', color: '#ec4899', fontWeight: 700, textTransform: 'uppercase', marginBottom: '2px'}}>{d.tag || 'Destination'}</div>
+                <strong>{d.name}</strong><br/>
+                Geofence Radius: {d.radius}m
+              </Popup>
+            </Marker>
+          </React.Fragment>
+        );
+      })}
 
       {users.map(u =>
         u.lat && u.lng ? (
