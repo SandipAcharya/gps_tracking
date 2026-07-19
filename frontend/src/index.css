@@ -833,15 +833,16 @@ html, body, #root {
   max-width: 400px;
 }
 
-/* Mobile: fixed next to Menu button (same stacking layer) */
+/* Mobile: mirror Menu button — same 1rem gap from right edge */
 @media (max-width: 768px) {
   .map-search-bar {
     position: fixed;
     top: 1rem;
-    left: 105px;
+    right: 1rem;
+    left: auto;
     transform: none;
-    width: calc(100vw - 120px);
-    max-width: 260px;
+    width: 180px;
+    max-width: none;
     z-index: 1400;
   }
   .sidebar {
