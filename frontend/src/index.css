@@ -822,9 +822,24 @@ html, body, #root {
   gap: 0.5rem;
 }
 
-/* No separate mobile media query needed - the overlay approach works everywhere */
-/* Mobile: sidebar is slightly narrower */
-@media (max-width: 480px) {
+/* ─── Map Search Bar ────────────────────────────────── */
+.map-search-bar {
+  position: absolute;
+  top: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  width: 90%;
+  max-width: 400px;
+}
+
+/* Mobile: push search bar below Menu button, full-width sidebar */
+@media (max-width: 768px) {
+  .map-search-bar {
+    top: 62px;
+    width: calc(100% - 2rem);
+    max-width: none;
+  }
   .sidebar {
     width: 100vw;
     max-width: 100vw;

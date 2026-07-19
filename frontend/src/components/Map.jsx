@@ -158,10 +158,7 @@ const MapSearch = ({ onLocationSelected }) => {
   }, []);
 
   return (
-    <div ref={containerRef} style={{
-      position: 'absolute', top: '15px', left: '50%', transform: 'translateX(-50%)',
-      zIndex: 1000, width: '90%', maxWidth: '400px'
-    }}>
+    <div ref={containerRef} className="map-search-bar">
       <form onSubmit={handleSearch} style={{ display: 'flex', background: 'white', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
         <input 
           type="text" 
