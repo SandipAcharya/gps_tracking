@@ -4,7 +4,8 @@ import { io } from 'socket.io-client';
 import Map from '../components/Map';
 import api, { BASE_URL } from '../utils/api';
 import { getUserColor } from '../utils/colors';
-import { LogOut, Play, Square, Building2, Key, Trash2, MapPin, Eye, EyeOff } from 'lucide-react';
+import { LogOut, Play, Square, Building2, Key, Trash2, MapPin, Eye, EyeOff, Users, ChevronDown } from 'lucide-react';
+import { BackgroundGeolocation } from '@capgo/background-geolocation';
 
 export default function Dashboard({ user, onLogout, onUpdateUser }) {
   const [activeUsers, setActiveUsers] = useState([]);
@@ -19,6 +20,37 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
   const [destinations, setDestinations] = useState([]);
   const [showEmployees, setShowEmployees] = useState(true);
   const [showGeofences, setShowGeofences] = useState(true);
+  const [adminTab, setAdminTab] = useState('fleet'); // 'fleet' | 'employees'
+  const [orgEmployees, setOrgEmployees] = useState([]);
+  const [empLoading, setEmpLoading] = useState(false);
+
+  const fetchOrgEmployees = async () => {
+    if (!user.activeOrganization) return;
+    setEmpLoading(true);
+    try {
+      const data = await api(`/api/admin/employees?orgName=${encodeURIComponent(user.activeOrganization)}`);
+      setOrgEmployees(data);
+    } catch (err) {
+      console.error('Failed to load employees', err);
+    } finally {
+      setEmpLoading(false);
+    }
+  };
+
+  const handleRoleChange = async (userId, newRole) => {
+    try {
+      await api(`/api/admin/employees/${userId}`, { method: 'PATCH', body: JSON.stringify({ role: newRole }) });
+      setOrgEmployees(prev => prev.map(e => e._id === userId ? { ...e, role: newRole } : e));
+    } catch (err) { alert('Failed to update role'); }
+  };
+
+  const handleRemoveEmployee = async (userId, name) => {
+    if (!window.confirm(`Remove ${name} from this workspace?`)) return;
+    try {
+      await api(`/api/admin/employees/${userId}`, { method: 'DELETE' });
+      setOrgEmployees(prev => prev.filter(e => e._id !== userId));
+    } catch (err) { alert('Failed to remove employee'); }
+  };
 
   const handleDeleteGeofence = async (id) => {
     if (!window.confirm("Delete this geofence?")) return;
@@ -105,10 +137,51 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
     }
   };
 
-  const toggleClock = () => {
+  const toggleClock = async () => {
     if (!isClockedIn) {
-      if ('geolocation' in navigator) {
-        setIsClockedIn(true);
+      setIsClockedIn(true);
+      const isNative = !!window.Capacitor?.isNative;
+
+      if (isNative) {
+        try {
+          const watcherId = await BackgroundGeolocation.addWatcher(
+            {
+              requestPermissions: true,
+              stale: false,
+              distanceFilter: 10 // only update if moved 10 meters
+            },
+            (pos, err) => {
+              if (err) return console.error('BG Geo Error:', err);
+              if (pos) {
+                const { latitude, longitude } = pos;
+                // Try socket first (if foreground)
+                socketRef.current.emit('update_location', { 
+                  organization: user.activeOrganization, 
+                  lat: latitude, 
+                  lng: longitude 
+                });
+                
+                // Also send via REST for background sync
+                fetch(`${BASE_URL}/api/location/background`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    userId: user._id || user.userId || user.id,
+                    organization: user.activeOrganization,
+                    lat: latitude,
+                    lng: longitude
+                  })
+                }).catch(e => console.error('BG Sync Failed', e));
+              }
+            }
+          );
+          watchIdRef.current = watcherId;
+        } catch (e) {
+          console.error(e);
+          alert('Failed to start native background tracking');
+          setIsClockedIn(false);
+        }
+      } else if ('geolocation' in navigator) {
         watchIdRef.current = navigator.geolocation.watchPosition(
           (pos) => {
             const { latitude, longitude } = pos.coords;
@@ -127,13 +200,19 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
         );
       } else {
         alert('Geolocation is not supported by your browser.');
+        setIsClockedIn(false);
       }
     } else {
       setIsClockedIn(false);
-      if (watchIdRef.current) {
+      const isNative = !!window.Capacitor?.isNative;
+      
+      if (isNative && watchIdRef.current) {
+        BackgroundGeolocation.removeWatcher({ id: watchIdRef.current });
+      } else if (watchIdRef.current) {
         navigator.geolocation.clearWatch(watchIdRef.current);
-        watchIdRef.current = null;
       }
+      
+      watchIdRef.current = null;
       socketRef.current.emit('update_location', { 
         organization: user.activeOrganization, 
         lat: null, 
@@ -228,7 +307,82 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
         </div>
 
         <div className="sidebar-content">
-          {user.role !== 'admin' && (
+          {/* Admin Tab Switcher */}
+          {user.role === 'admin' && (
+            <div style={{display:'flex', gap:'8px', marginBottom:'1.5rem'}}>
+              <button
+                onClick={() => setAdminTab('fleet')}
+                style={{flex:1, padding:'8px', borderRadius:'6px', border:'none', fontWeight:600, fontSize:'0.8rem', cursor:'pointer',
+                  background: adminTab==='fleet' ? 'var(--primary)' : '#f1f5f9',
+                  color: adminTab==='fleet' ? 'white' : 'var(--text-3)'}}
+              >🗺 Fleet</button>
+              <button
+                onClick={() => { setAdminTab('employees'); fetchOrgEmployees(); }}
+                style={{flex:1, padding:'8px', borderRadius:'6px', border:'none', fontWeight:600, fontSize:'0.8rem', cursor:'pointer',
+                  background: adminTab==='employees' ? 'var(--primary)' : '#f1f5f9',
+                  color: adminTab==='employees' ? 'white' : 'var(--text-3)'}}
+              ><Users size={12} style={{marginRight:4}}/>Team</button>
+            </div>
+          )}
+
+          {/* ── EMPLOYEE MANAGEMENT TAB (Admin only) ── */}
+          {user.role === 'admin' && adminTab === 'employees' && (
+            <div>
+              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem'}}>
+                <h3 className="section-title">Team Members ({orgEmployees.length})</h3>
+                <button onClick={fetchOrgEmployees} style={{background:'none',border:'none',color:'var(--primary)',cursor:'pointer',fontSize:'0.8rem',fontWeight:600}}>
+                  Refresh
+                </button>
+              </div>
+              {empLoading ? (
+                <div style={{textAlign:'center',color:'var(--text-3)',padding:'2rem 0',fontSize:'0.85rem'}}>Loading...</div>
+              ) : orgEmployees.length === 0 ? (
+                <div style={{textAlign:'center',color:'var(--text-3)',padding:'2rem 0',fontSize:'0.85rem'}}>No employees found.</div>
+              ) : (
+                <div className="users-scroll">
+                  {orgEmployees.map(emp => (
+                    <div key={emp._id} style={{padding:'12px', borderBottom:'1px solid #f1f5f9'}}>
+                      <div style={{display:'flex', alignItems:'center', gap:'10px', marginBottom:'8px'}}>
+                        <img
+                          src={`https://ui-avatars.com/api/?name=${encodeURIComponent(emp.name)}&background=random&color=fff&bold=true`}
+                          alt={emp.name}
+                          style={{width:'34px', height:'34px', borderRadius:'50%', flexShrink:0}}
+                        />
+                        <div style={{flex:1, minWidth:0}}>
+                          <div style={{fontWeight:600, fontSize:'0.88rem', color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{emp.name}</div>
+                          <div style={{fontSize:'0.72rem', color:'var(--text-3)'}}>{emp.designation} · {emp.department}</div>
+                        </div>
+                        <span style={{
+                          fontSize:'0.65rem', fontWeight:700, padding:'2px 7px', borderRadius:'99px', flexShrink:0,
+                          background: emp.role==='admin' ? '#ede9fe' : '#ecfdf5',
+                          color: emp.role==='admin' ? '#7c3aed' : '#059669'
+                        }}>{emp.role.toUpperCase()}</span>
+                      </div>
+                      <div style={{display:'flex', gap:'6px'}}>
+                        <select
+                          value={emp.role}
+                          onChange={e => handleRoleChange(emp._id, e.target.value)}
+                          style={{flex:1, fontSize:'0.75rem', padding:'4px 6px', border:'1px solid var(--border)', borderRadius:'5px', background:'var(--bg-2)', color:'var(--text)', cursor:'pointer'}}
+                        >
+                          <option value="employee">Employee</option>
+                          <option value="admin">Admin</option>
+                          <option value="none">No Access</option>
+                        </select>
+                        <button
+                          onClick={() => handleRemoveEmployee(emp._id, emp.name)}
+                          style={{background:'#fef2f2', border:'1px solid #fecaca', color:'#ef4444', borderRadius:'5px', padding:'4px 8px', cursor:'pointer', fontSize:'0.75rem', fontWeight:600}}
+                        >Remove</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── FLEET TAB (default) ── */}
+          {(user.role !== 'admin' || adminTab === 'fleet') && (
+            <div>
             <div className="clock-in-section" style={{marginBottom: '2rem'}}>
               {/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? (
                 <button 
@@ -248,7 +402,7 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
                 </div>
               )}
             </div>
-          )}
+
           
           <div className="active-users-list">
             <h3 className="section-title">Active Fleet ({activeUsers.filter(u => u.lat).length}/{activeUsers.length})</h3>
@@ -354,6 +508,8 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
                 </div>
               )}
             </div>
+          )}
+          </div>
           )}
         </div>
 

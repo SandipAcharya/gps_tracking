@@ -10,10 +10,12 @@ const authRoutes = require('./routes/auth');
 const roomRoutes = require('./routes/rooms');
 const profileRoutes = require('./routes/profile');
 const destinationRoutes = require('./routes/destinations');
+const adminRoutes = require('./routes/admin');
 const LocationHistory = require('./models/LocationHistory');
 const Organization = require('./models/Organization');
 const Destination = require('./models/Destination');
 const Visit = require('./models/Visit');
+const User = require('./models/User');
 
 const app = express();
 const server = http.createServer(app);
@@ -32,6 +34,93 @@ app.use('/api/auth', authRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/destinations', destinationRoutes);
+app.use('/api/admin', adminRoutes);
+
+// Helper for Haversine distance in meters
+const getDistance = (lat1, lon1, lat2, lon2) => {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
+  const R = 6371e3; // Earth radius in meters
+  const rad = Math.PI / 180;
+  const dLat = (lat2 - lat1) * rad;
+  const dLon = (lon2 - lon1) * rad;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * rad) * Math.cos(lat2 * rad) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+};
+
+// ─── Background Location Sync ──────────────────────────
+const bgTracking = {}; // In-memory tracker for users without active sockets
+app.post('/api/location/background', async (req, res) => {
+  const { userId, organization, lat, lng } = req.body;
+  if (!userId || !organization || !lat || !lng) return res.status(400).json({ error: 'Missing data' });
+
+  try {
+    const user = await User.findById(userId);
+    const org = await Organization.findOne({ name: organization });
+    if (!user || !org) return res.status(404).json({ error: 'User or Org not found' });
+
+    if (!bgTracking[userId]) bgTracking[userId] = { arrivedDests: new Map(), lastSavedLat: null, lastSavedLng: null };
+    const session = bgTracking[userId];
+    const distance = getDistance(session.lastSavedLat, session.lastSavedLng, lat, lng);
+
+    if (!activeRooms[organization]) activeRooms[organization] = {};
+    let existingSessionKey = Object.keys(activeRooms[organization]).find(key => activeRooms[organization][key].userId === userId);
+    if (!existingSessionKey) {
+      existingSessionKey = `bg_${userId}`;
+      activeRooms[organization][existingSessionKey] = {
+        socketId: existingSessionKey,
+        userId: user._id.toString(),
+        name: user.name,
+        designation: user.designation,
+        email: user.email,
+        role: user.role,
+        trackingMode: user.trackingMode || 'full',
+        arrivedDests: new Map()
+      };
+    }
+    
+    const activeSession = activeRooms[organization][existingSessionKey];
+    activeSession.lat = lat;
+    activeSession.lng = lng;
+    
+    if (io) io.to(organization).emit('org_users', Object.values(activeRooms[organization]));
+
+    if (distance > 200 || distance === Infinity || !session.lastSavedLat) {
+       if (user.trackingMode === 'full') {
+          await LocationHistory.create({ userId, orgId: org._id, lat, lng });
+       }
+       session.lastSavedLat = lat;
+       session.lastSavedLng = lng;
+       activeSession.lastSavedLat = lat;
+       activeSession.lastSavedLng = lng;
+
+       const dests = await Destination.find({ orgId: org._id });
+       for (const d of dests) {
+          const distToDest = getDistance(lat, lng, d.lat, d.lng);
+          const destIdStr = d._id.toString();
+          if (distToDest <= d.radius) {
+            if (!session.arrivedDests.has(destIdStr)) {
+               const visit = await Visit.create({ userId, orgId: org._id, destinationId: d._id, entryTime: new Date() });
+               session.arrivedDests.set(destIdStr, visit._id);
+               activeSession.arrivedDests.set(destIdStr, visit._id);
+               if (io) io.to(organization).emit('geofence_arrival', { employeeName: user.name, destinationName: `${d.tag || 'Location'}: ${d.name}`, timestamp: new Date() });
+            }
+          } else {
+             if (session.arrivedDests.has(destIdStr)) {
+                const visitId = session.arrivedDests.get(destIdStr);
+                await Visit.findByIdAndUpdate(visitId, { exitTime: new Date() }).catch(console.error);
+                session.arrivedDests.delete(destIdStr);
+                activeSession.arrivedDests.delete(destIdStr);
+             }
+          }
+       }
+    }
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 // ─── Socket.io ────────────────────────────────────────
 const io = new Server(server, {
