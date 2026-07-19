@@ -3,6 +3,7 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const LocationHistory = require('../models/LocationHistory');
+const Visit = require('../models/Visit');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_jwt_secret_change_in_prod';
 
@@ -50,6 +51,14 @@ router.get('/:userId', verifyToken, async (req, res) => {
       timestamp: { $gte: threeDaysAgo }
     }).sort({ timestamp: 1 }); // Chronological order
 
+    // Fetch Visits (last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const visits = await Visit.find({
+      userId: targetUserId,
+      entryTime: { $gte: thirtyDaysAgo }
+    }).populate('destinationId').sort({ entryTime: -1 });
+
     res.json({
       user: {
         id: target._id,
@@ -65,6 +74,13 @@ router.get('/:userId', verifyToken, async (req, res) => {
         lat: h.lat,
         lng: h.lng,
         timestamp: h.timestamp
+      })),
+      visits: visits.map(v => ({
+        id: v._id,
+        destinationName: v.destinationId ? v.destinationId.name : 'Unknown Destination',
+        tag: v.destinationId ? v.destinationId.tag : 'Other',
+        entryTime: v.entryTime,
+        exitTime: v.exitTime
       }))
     });
 

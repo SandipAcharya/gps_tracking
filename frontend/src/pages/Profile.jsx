@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { MapContainer as MapCont, TileLayer as TileL, Polyline as PolyL, Marker as MarkL, Popup as PopL } from 'react-leaflet';
-import { ArrowLeft, User, Phone, Mail, Briefcase, Building2 } from 'lucide-react';
+import { ArrowLeft, User, Phone, Mail, Briefcase, Building2, MapPin, Clock } from 'lucide-react';
 import { getUserColor } from '../utils/colors';
 
 const Profile = ({ currentUser }) => {
@@ -100,6 +100,71 @@ const Profile = ({ currentUser }) => {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Visit History Log */}
+      <div style={{ marginTop: '2rem', background: '#fff', borderRadius: '12px', padding: '2rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+        <h3 style={{ margin: '0 0 1.5rem', color: '#1e1b4b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <MapPin size={20} color="#7c3aed" /> 30-Day Visit History
+        </h3>
+        
+        {profileData.visits && profileData.visits.length > 0 ? (
+          <div style={{ display: 'grid', gap: '1rem' }}>
+            {profileData.visits.map(visit => {
+              const entry = new Date(visit.entryTime);
+              const exit = visit.exitTime ? new Date(visit.exitTime) : null;
+              
+              // Calculate duration in minutes if exit exists, or 'Ongoing'
+              let durationStr = 'Ongoing (Currently on-site)';
+              if (exit) {
+                const diffMs = exit - entry;
+                const diffMins = Math.round(diffMs / 60000);
+                if (diffMins < 60) durationStr = `${diffMins} mins`;
+                else {
+                  const hrs = Math.floor(diffMins / 60);
+                  const mins = diffMins % 60;
+                  durationStr = `${hrs} hr ${mins} min`;
+                }
+              }
+
+              return (
+                <div key={visit.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', padding: '1.25rem', border: '1px solid #e5e7eb', borderRadius: '8px', background: exit ? '#f9fafb' : '#ecfdf5' }}>
+                  <div style={{ padding: '8px', background: '#e0e7ff', color: '#4f46e5', borderRadius: '8px' }}>
+                    <MapPin size={24} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div>
+                        <h4 style={{ margin: '0 0 4px 0', fontSize: '1.05rem', color: '#111827' }}>{visit.destinationName}</h4>
+                        <span style={{ display: 'inline-block', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.05em', color: '#ec4899', background: '#fdf2f8', padding: '2px 8px', borderRadius: '4px', textTransform: 'uppercase' }}>
+                          {visit.tag}
+                        </span>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151' }}>{entry.toLocaleDateString()}</div>
+                        <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+                          {entry.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 
+                          {exit ? ` - ${exit.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: exit ? '#4b5563' : '#059669', fontWeight: exit ? 500 : 700 }}>
+                      <Clock size={16} /> 
+                      {durationStr}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div style={{ padding: '3rem', textAlign: 'center', background: '#f9fafb', borderRadius: '8px', color: '#9ca3af' }}>
+            <MapPin size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
+            <div>No visits logged in the last 30 days.</div>
+            <div style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>Geofence arrivals will appear here automatically.</div>
+          </div>
+        )}
       </div>
     </div>
   );
