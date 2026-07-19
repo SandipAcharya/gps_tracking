@@ -99,7 +99,7 @@ router.post('/verify-otp', async (req, res) => {
     if (user.email === ADMIN_EMAIL) user.role = 'admin';
     await user.save();
 
-    const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '12h' });
+    const token = jwt.sign({ userId: user._id, role: user.role }, JWT_SECRET, { expiresIn: '12h' });
     res.json({ token, user: { id: user._id, name: user.name, email: user.email, phone: user.phone, role: user.role, activeOrganization: null } });
   } catch (err) {
     console.error(err);
@@ -125,7 +125,7 @@ router.post('/login', async (req, res) => {
 
     if (!user.isVerified) return res.status(401).json({ error: 'Please verify your email first.' });
 
-    const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '12h' });
+    const token = jwt.sign({ userId: user._id, role: user.role }, JWT_SECRET, { expiresIn: '12h' });
     
     res.json({ 
       token, 

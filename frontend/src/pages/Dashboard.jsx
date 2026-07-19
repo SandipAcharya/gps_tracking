@@ -295,8 +295,8 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
           </div>
 
 
-          {/* Map Filters */}
-          <div className="map-filters" style={{marginTop: '2rem', borderTop: '1px solid #f1f5f9', paddingTop: '1.5rem'}}>
+          {/* Map Filters — Admin Only */}
+          {user.role === 'admin' && <div className="map-filters" style={{marginTop: '2rem', borderTop: '1px solid #f1f5f9', paddingTop: '1.5rem'}}>
             <h3 className="section-title">Map Filters</h3>
             <div style={{display: 'flex', gap: '1rem', marginTop: '1rem'}}>
               <button 
@@ -314,7 +314,7 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
                 Geofences
               </button>
             </div>
-          </div>
+          </div>}
 
           {/* Geofences Management (Admin Only) */}
           {user.role === 'admin' && (
