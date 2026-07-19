@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, Circle, useMap, useMapEvents } 
 import L from 'leaflet';
 import { getUserColor, getEmployeeColor } from '../utils/colors';
 import { BASE_URL } from '../utils/api';
-
+import { Search } from 'lucide-react';
 // ─── Custom Marker Icon ───────────────────────────────
 const createCustomIcon = (role, isMe, name) => {
   const color = getUserColor(role, name, isMe);
@@ -118,6 +118,76 @@ const MapClickHandler = ({ userRole, orgName, onDestinationAdded }) => {
   return null;
 };
 
+// ─── Map Search Component ─────────────────────────────
+const MapSearch = () => {
+  const map = useMap();
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    if (!query) return;
+    
+    setIsSearching(true);
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+      const data = await res.json();
+      setResults(data.slice(0, 5));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const goToLocation = (lat, lon) => {
+    map.flyTo([lat, lon], 17, { animate: true, duration: 1.5 });
+    setResults([]);
+    setQuery('');
+  };
+
+  return (
+    <div style={{
+      position: 'absolute', top: '15px', left: '50%', transform: 'translateX(-50%)',
+      zIndex: 1000, width: '90%', maxWidth: '400px'
+    }}>
+      <form onSubmit={handleSearch} style={{ display: 'flex', background: 'white', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
+        <input 
+          type="text" 
+          placeholder="Search location..." 
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            if (!e.target.value) setResults([]);
+          }}
+          style={{ flex: 1, border: 'none', padding: '12px 16px', outline: 'none', fontSize: '0.95rem' }}
+        />
+        <button type="submit" disabled={isSearching} style={{ background: '#4f46e5', color: 'white', border: 'none', padding: '0 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Search size={18} style={{ opacity: isSearching ? 0.5 : 1 }} />
+        </button>
+      </form>
+
+      {results.length > 0 && (
+        <div style={{ marginTop: '8px', background: 'white', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', overflow: 'hidden', maxHeight: '200px', overflowY: 'auto' }}>
+          {results.map((r, i) => (
+            <div 
+              key={i} 
+              onClick={() => goToLocation(r.lat, r.lon)}
+              style={{ padding: '10px 16px', borderBottom: i < results.length - 1 ? '1px solid #f1f5f9' : 'none', cursor: 'pointer', fontSize: '0.8rem', lineHeight: '1.4' }}
+              onMouseOver={e => e.currentTarget.style.background = '#f8fafc'}
+              onMouseOut={e => e.currentTarget.style.background = 'white'}
+            >
+              {r.display_name}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+
 // ─── Main Map Component ───────────────────────────────
 const Map = ({ users = [], currentUserEmail, myLocation, focusLocation, destinations = [], userRole, orgName, onDestinationAdded, sidebarOpen }) => {
   const defaultCenter = [27.7172, 85.3240]; // Kathmandu
@@ -130,6 +200,7 @@ const Map = ({ users = [], currentUserEmail, myLocation, focusLocation, destinat
       style={{ height: '100%', width: '100%' }}
       zoomControl={false}
     >
+      <MapSearch />
       <ResizeFix sidebarOpen={sidebarOpen} />
       <TileLayer
         attribution='&copy; Google Maps'
