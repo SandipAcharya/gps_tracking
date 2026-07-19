@@ -841,7 +841,7 @@ html, body, #root {
     right: 1rem;
     left: auto;
     transform: none;
-    width: 180px;
+    width: 220px;
     max-width: none;
     z-index: 1400;
   }

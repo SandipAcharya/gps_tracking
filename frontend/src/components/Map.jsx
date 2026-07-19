@@ -171,7 +171,7 @@ const MapSearch = ({ onLocationSelected }) => {
               if (onLocationSelected) onLocationSelected(null);
             }
           }}
-          style={{ flex: 1, border: 'none', padding: '12px 16px', outline: 'none', fontSize: '0.95rem' }}
+          style={{ flex: 1, border: 'none', padding: '10px 10px', outline: 'none', fontSize: '0.9rem', minWidth: 0 }}
         />
         {query && (
           <button 
