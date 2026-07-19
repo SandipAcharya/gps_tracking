@@ -119,7 +119,7 @@ const MapClickHandler = ({ userRole, orgName, onDestinationAdded }) => {
 };
 
 // ─── Map Search Component ─────────────────────────────
-const MapSearch = () => {
+const MapSearch = ({ onLocationSelected }) => {
   const map = useMap();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
@@ -141,8 +141,9 @@ const MapSearch = () => {
     }
   };
 
-  const goToLocation = (lat, lon) => {
+  const goToLocation = (lat, lon, name) => {
     map.flyTo([lat, lon], 17, { animate: true, duration: 1.5 });
+    if (onLocationSelected) onLocationSelected({ lat, lon, name });
     setResults([]);
     setQuery('');
   };
@@ -182,7 +183,7 @@ const MapSearch = () => {
           {results.map((r, i) => (
             <div 
               key={i} 
-              onClick={() => goToLocation(r.lat, r.lon)}
+              onClick={() => goToLocation(r.lat, r.lon, r.display_name)}
               style={{ padding: '10px 16px', borderBottom: i < results.length - 1 ? '1px solid #f1f5f9' : 'none', cursor: 'pointer', fontSize: '0.8rem', lineHeight: '1.4' }}
               onMouseOver={e => e.currentTarget.style.background = '#f8fafc'}
               onMouseOut={e => e.currentTarget.style.background = 'white'}
@@ -201,6 +202,7 @@ const MapSearch = () => {
 const Map = ({ users = [], currentUserEmail, myLocation, focusLocation, destinations = [], userRole, orgName, onDestinationAdded, sidebarOpen }) => {
   const defaultCenter = [27.7172, 85.3240]; // Kathmandu
   const center = myLocation ? [myLocation.lat, myLocation.lng] : defaultCenter;
+  const [searchLocation, setSearchLocation] = useState(null);
 
   return (
     <MapContainer
@@ -209,7 +211,7 @@ const Map = ({ users = [], currentUserEmail, myLocation, focusLocation, destinat
       style={{ height: '100%', width: '100%' }}
       zoomControl={false}
     >
-      <MapSearch />
+      <MapSearch onLocationSelected={setSearchLocation} />
       <ResizeFix sidebarOpen={sidebarOpen} />
       <TileLayer
         attribution='&copy; Google Maps'
@@ -220,6 +222,24 @@ const Map = ({ users = [], currentUserEmail, myLocation, focusLocation, destinat
       {myLocation && !focusLocation && <InitialCenter lat={myLocation.lat} lng={myLocation.lng} />}
       {focusLocation && <FocusController focusLocation={focusLocation} />}
       <MapClickHandler userRole={userRole} orgName={orgName} onDestinationAdded={onDestinationAdded} />
+
+      {searchLocation && (
+        <Marker 
+          position={[searchLocation.lat, searchLocation.lon]}
+          icon={L.divIcon({
+            className: '',
+            html: `<div style="width:16px;height:16px;background:#ef4444;border-radius:50%;border:3px solid white;box-shadow:0 0 10px rgba(239,68,68,0.8);animation:bounce 1s infinite;"></div>`,
+            iconSize: [16, 16],
+            iconAnchor: [8, 8]
+          })}
+        >
+          <Popup>
+            <div style={{fontSize: '0.75rem', color: '#ef4444', fontWeight: 700}}>SEARCH RESULT</div>
+            <strong>{searchLocation.name}</strong><br/>
+            <span style={{fontSize: '0.75rem', color: '#6b7280'}}>Click near here to add geofence</span>
+          </Popup>
+        </Marker>
+      )}
 
       {/* Render Destinations (Geofences) */}
       {destinations.map(d => {
