@@ -292,8 +292,8 @@ export default function Dashboard({ user, onLogout, onUpdateUser }) {
                 </div>
               ))}
             </div>
-            </div>
           </div>
+
 
           {/* Map Filters */}
           <div className="map-filters" style={{marginTop: '2rem', borderTop: '1px solid #f1f5f9', paddingTop: '1.5rem'}}>
