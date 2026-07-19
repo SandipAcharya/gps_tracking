@@ -269,9 +269,24 @@ io.on('connection', (socket) => {
 mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/geotracker')
   .then(() => {
     console.log('✅ MongoDB Connected');
-    server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+    server.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+
+      // ─── Keep-Alive Ping (prevents Render free tier from sleeping) ───
+      // Pings the health endpoint every 14 minutes (Render sleeps after 15 min)
+      const BACKEND_URL = process.env.BACKEND_URL || `http://localhost:${PORT}`;
+      setInterval(async () => {
+        try {
+          const res = await fetch(`${BACKEND_URL}/api/health`);
+          console.log(`[Keep-Alive] Pinged at ${new Date().toISOString()} — status: ${res.status}`);
+        } catch (e) {
+          console.warn(`[Keep-Alive] Ping failed: ${e.message}`);
+        }
+      }, 14 * 60 * 1000); // every 14 minutes
+    });
   })
   .catch(err => {
     console.error('❌ MongoDB connection failed:', err.message);
     process.exit(1);
   });
+
