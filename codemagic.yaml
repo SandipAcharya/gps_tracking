@@ -4,7 +4,7 @@ workflows:
   ios-build:
     name: iOS Debug Build
     max_build_duration: 60
-    instance_type: mac_mini_m2   # Free tier macOS machine
+    instance_type: mac_mini_m2
 
     environment:
       node: 22
@@ -12,28 +12,34 @@ workflows:
       cocoapods: default
 
     scripts:
-      # 1. Install frontend dependencies
+      # 1. Install frontend dependencies (always cd from repo root)
       - name: Install Node Dependencies
-        script: npm install
+        script: |
+          cd frontend
+          npm install
 
       # 2. Build the React/Vite web app
       - name: Build Frontend
-        script: npm run build
+        script: |
+          cd frontend
+          npm run build
 
       # 3. Sync Capacitor — copies web assets into ios/ folder
       - name: Capacitor Sync iOS
-        script: npx cap sync ios
+        script: |
+          cd frontend
+          npx cap sync ios
 
-      # 4. Install CocoaPods (iOS native dependency manager)
+      # 4. Install CocoaPods
       - name: Install CocoaPods
         script: |
-          cd ios/App
+          cd frontend/ios/App
           pod install --repo-update
 
       # 5. Build unsigned .app for simulator testing
       - name: Build iOS App (Debug)
         script: |
-          cd ios/App
+          cd frontend/ios/App
           xcodebuild \
             -workspace App.xcworkspace \
             -scheme App \
@@ -46,4 +52,4 @@ workflows:
             build
 
     artifacts:
-      - ios/App/build/Build/Products/Debug-iphonesimulator/*.app
+      - frontend/ios/App/build/Build/Products/Debug-iphonesimulator/*.app
