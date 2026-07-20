@@ -54,12 +54,3 @@ workflows:
     artifacts:
       # Download the built app from Codemagic dashboard
       - frontend/ios/App/build/Build/Products/Debug-iphonesimulator/*.app
-
-    publishing:
-      # Email notification when build completes
-      email:
-        recipients:
-          - $CM_BUILD_STEP_NAME   # Replace with your actual email in Codemagic UI
-        notify:
-          success: true
-          failure: true
