@@ -9,10 +9,9 @@ workflows:
     environment:
       node: 22
       xcode: latest
-      cocoapods: default
 
     scripts:
-      # 1. Install frontend dependencies (always cd from repo root)
+      # 1. Install frontend dependencies
       - name: Install Node Dependencies
         script: |
           cd frontend
@@ -30,22 +29,17 @@ workflows:
           cd frontend
           npx cap sync ios
 
-      # 4. Install CocoaPods
-      - name: Install CocoaPods
-        script: |
-          cd frontend/ios/App
-          pod install --repo-update
-
-      # 5. Build unsigned .app for simulator testing
-      - name: Build iOS App (Debug)
+      # 4. Build iOS App using Swift Package Manager (no CocoaPods needed for Capacitor v5+)
+      - name: Build iOS App (Debug Simulator)
         script: |
           cd frontend/ios/App
           xcodebuild \
-            -workspace App.xcworkspace \
+            -project App.xcodeproj \
             -scheme App \
             -configuration Debug \
             -sdk iphonesimulator \
             -derivedDataPath build \
+            -resolvePackageDependencies \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
