@@ -806,7 +806,7 @@ html, body, #root {
 
 .menu-toggle-btn {
   position: fixed;
-  top: 1rem;
+  top: calc(env(safe-area-inset-top, 0px) + 1rem);
   left: 1rem;
   z-index: 1500;
   background: white;
@@ -825,7 +825,7 @@ html, body, #root {
 /* ─── Map Search Bar ────────────────────────────────── */
 .map-search-bar {
   position: absolute;
-  top: 15px;
+  top: calc(env(safe-area-inset-top, 0px) + 1rem);
   left: 50%;
   transform: translateX(-50%);
   z-index: 1000;
@@ -837,11 +837,11 @@ html, body, #root {
 @media (max-width: 768px) {
   .map-search-bar {
     position: fixed;
-    top: 1rem;
+    top: calc(env(safe-area-inset-top, 0px) + 1rem);
     right: 1rem;
-    left: auto;
+    left: 120px;
     transform: none;
-    width: 220px;
+    width: auto;
     max-width: none;
     z-index: 1400;
   }
