@@ -14,32 +14,26 @@ workflows:
     scripts:
       # 1. Install frontend dependencies
       - name: Install Node Dependencies
-        script: |
-          cd frontend
-          npm ci
+        script: npm ci
 
       # 2. Build the React/Vite web app
       - name: Build Frontend
-        script: |
-          cd frontend
-          npm run build
+        script: npm run build
 
       # 3. Sync Capacitor — copies web assets into ios/ folder
       - name: Capacitor Sync iOS
-        script: |
-          cd frontend
-          npx cap sync ios
+        script: npx cap sync ios
 
       # 4. Install CocoaPods (iOS native dependency manager)
       - name: Install CocoaPods
         script: |
-          cd frontend/ios/App
+          cd ios/App
           pod install --repo-update
 
-      # 5. Build unsigned IPA for testing (no Apple Developer account needed)
-      - name: Build iOS IPA (Debug)
+      # 5. Build unsigned .app for simulator testing
+      - name: Build iOS App (Debug)
         script: |
-          cd frontend/ios/App
+          cd ios/App
           xcodebuild \
             -workspace App.xcworkspace \
             -scheme App \
@@ -52,5 +46,4 @@ workflows:
             build
 
     artifacts:
-      # Download the built app from Codemagic dashboard
-      - frontend/ios/App/build/Build/Products/Debug-iphonesimulator/*.app
+      - ios/App/build/Build/Products/Debug-iphonesimulator/*.app
