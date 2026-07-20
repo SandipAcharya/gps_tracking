@@ -29,7 +29,7 @@ workflows:
           cd frontend
           npx cap sync ios
 
-      # 4. Build iOS App using Swift Package Manager (no CocoaPods needed for Capacitor v5+)
+      # 4. Build iOS App using Swift Package Manager
       - name: Build iOS App (Debug Simulator)
         script: |
           cd frontend/ios/App
@@ -39,7 +39,6 @@ workflows:
             -configuration Debug \
             -sdk iphonesimulator \
             -derivedDataPath $CM_BUILD_DIR/ios_build_output \
-            -resolvePackageDependencies \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
@@ -48,11 +47,12 @@ workflows:
       # 6. Zip the .app for Appetize.io
       - name: Zip for Appetize.io
         script: |
-          # Search the entire build directory for the simulator app
-          APP_PATH=$(find $CM_BUILD_DIR -type d -name "*.app" | grep -i "simulator" | head -n 1)
+          # Search the entire build directory for ANY .app file
+          APP_PATH=$(find $CM_BUILD_DIR -type d -name "*.app" | head -n 1)
           
           if [ -z "$APP_PATH" ]; then
-            echo "CRITICAL ERROR: Could not find .app file!"
+            echo "CRITICAL ERROR: Could not find .app file! Showing xcodebuild output tree:"
+            find $CM_BUILD_DIR/ios_build_output -maxdepth 4 || true
             exit 1
           fi
           
