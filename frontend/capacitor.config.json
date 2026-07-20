@@ -1,5 +1,10 @@
 {
   "appId": "com.inpanda.tracker",
   "appName": "EmployeeTracker",
-  "webDir": "dist"
+  "webDir": "dist",
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
 }

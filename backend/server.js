@@ -25,16 +25,7 @@ const CLIENT_URL = process.env.CLIENT_URL || '*';
 const PORT = process.env.PORT || 5000;
 
 // ─── Middleware ───────────────────────────────────────
-app.use(cors({
-  origin: function (origin, callback) {
-    // Allow if no origin (e.g. mobile apps) or if it's explicitly allowed via CLIENT_URL
-    if (!origin || origin === 'capacitor://localhost' || origin === 'http://localhost' || CLIENT_URL === '*' || origin === CLIENT_URL) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  }
-}));
+app.use(cors()); // Allow all origins for mobile, vercel, and local dev
 app.use(express.json());
 
 // ─── Routes ───────────────────────────────────────────
@@ -283,7 +274,7 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/geotracker'
 
       // ─── Keep-Alive Ping (prevents Render free tier from sleeping) ───
       // Pings the health endpoint every 14 minutes (Render sleeps after 15 min)
-      const BACKEND_URL = process.env.BACKEND_URL || `http://localhost:${PORT}`;
+      const BACKEND_URL = process.env.BACKEND_URL || 'https://gps-tracking-86e6.onrender.com';
       setInterval(async () => {
         try {
           const res = await fetch(`${BACKEND_URL}/api/health`);
