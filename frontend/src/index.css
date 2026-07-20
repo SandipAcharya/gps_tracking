@@ -805,7 +805,7 @@ html, body, #root {
 }
 
 .menu-toggle-btn {
-  position: fixed;
+  position: absolute;
   top: calc(env(safe-area-inset-top, 0px) + 1rem);
   left: 1rem;
   z-index: 1500;
@@ -836,7 +836,7 @@ html, body, #root {
 /* Mobile: mirror Menu button — same 1rem gap from right edge */
 @media (max-width: 768px) {
   .map-search-bar {
-    position: fixed;
+    position:absolute;
     top: calc(env(safe-area-inset-top, 0px) + 1rem);
     right: 1rem;
     left: 120px;
