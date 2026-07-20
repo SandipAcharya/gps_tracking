@@ -38,7 +38,7 @@ workflows:
             -scheme App \
             -configuration Debug \
             -sdk iphonesimulator \
-            -derivedDataPath build \
+            -derivedDataPath $CM_BUILD_DIR/ios_build_output \
             -resolvePackageDependencies \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
@@ -48,11 +48,10 @@ workflows:
       # 6. Zip the .app for Appetize.io
       - name: Zip for Appetize.io
         script: |
-          APP_PATH=$(find frontend/ios -type d -name "*.app" | head -n 1)
-          echo "Found app at: $APP_PATH"
-          cd $(dirname "$APP_PATH")
-          zip -r App-Simulator.zip $(basename "$APP_PATH")
-          mv App-Simulator.zip $CM_BUILD_DIR/
+          cd $CM_BUILD_DIR/ios_build_output/Build/Products/Debug-iphonesimulator
+          APP_NAME=$(ls | grep "\.app$")
+          echo "Found app: $APP_NAME"
+          zip -r $CM_BUILD_DIR/App-Simulator.zip "$APP_NAME"
 
     artifacts:
       - App-Simulator.zip
