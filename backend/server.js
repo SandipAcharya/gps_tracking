@@ -25,7 +25,16 @@ const CLIENT_URL = process.env.CLIENT_URL || '*';
 const PORT = process.env.PORT || 5000;
 
 // ─── Middleware ───────────────────────────────────────
-app.use(cors({ origin: CLIENT_URL }));
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow if no origin (e.g. mobile apps) or if it's explicitly allowed via CLIENT_URL
+    if (!origin || origin === 'capacitor://localhost' || origin === 'http://localhost' || CLIENT_URL === '*' || origin === CLIENT_URL) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  }
+}));
 app.use(express.json());
 
 // ─── Routes ───────────────────────────────────────────
@@ -124,7 +133,7 @@ app.post('/api/location/background', async (req, res) => {
 
 // ─── Socket.io ────────────────────────────────────────
 const io = new Server(server, {
-  cors: { origin: CLIENT_URL, methods: ['GET', 'POST'] }
+  cors: { origin: true, methods: ['GET', 'POST'] } // origin: true allows all origins dynamically
 });
 
 // In-memory active tracking (GPS coords are transient — never stored in DB)

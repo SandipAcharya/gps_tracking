@@ -1,5 +1,5 @@
 // Centralized API client — all requests go through here
-export const BASE_URL = import.meta.env.VITE_API_URL || '';
+export const BASE_URL = import.meta.env.VITE_API_URL || 'https://gps-tracking-86e6.onrender.com';
 
 const api = async (endpoint, options = {}) => {
   const token = localStorage.getItem('geo_token');
