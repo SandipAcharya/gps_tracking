@@ -48,8 +48,11 @@ workflows:
       # 6. Zip the .app for Appetize.io
       - name: Zip for Appetize.io
         script: |
-          cd frontend/ios/App/build/Build/Products/Debug-iphonesimulator
-          zip -r App-Simulator.zip *.app
+          APP_PATH=$(find frontend/ios -type d -name "*.app" | head -n 1)
+          echo "Found app at: $APP_PATH"
+          cd $(dirname "$APP_PATH")
+          zip -r App-Simulator.zip $(basename "$APP_PATH")
+          mv App-Simulator.zip $CM_BUILD_DIR/
 
     artifacts:
-      - frontend/ios/App/build/Build/Products/Debug-iphonesimulator/App-Simulator.zip
+      - App-Simulator.zip
