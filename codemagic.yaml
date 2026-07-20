@@ -14,7 +14,7 @@ workflows:
     scripts:
       # 1. Install frontend dependencies
       - name: Install Node Dependencies
-        script: npm ci
+        script: npm install
 
       # 2. Build the React/Vite web app
       - name: Build Frontend
