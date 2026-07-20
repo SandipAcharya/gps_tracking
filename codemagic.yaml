@@ -45,5 +45,11 @@ workflows:
             CODE_SIGNING_ALLOWED=NO \
             build
 
+      # 6. Zip the .app for Appetize.io
+      - name: Zip for Appetize.io
+        script: |
+          cd frontend/ios/App/build/Build/Products/Debug-iphonesimulator
+          zip -r App-Simulator.zip *.app
+
     artifacts:
-      - frontend/ios/App/build/Build/Products/Debug-iphonesimulator/*.app
+      - frontend/ios/App/build/Build/Products/Debug-iphonesimulator/App-Simulator.zip
