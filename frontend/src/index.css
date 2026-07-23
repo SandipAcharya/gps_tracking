@@ -54,7 +54,9 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body, #root {
-  height: 100%;
+  height: 100dvh;
+  min-height: 100dvh;
+  overscroll-behavior: none; /* Prevents Safari bounce/scroll effect */
   font-family: 'Inter', -apple-system, sans-serif;
   background: var(--bg);
   color: var(--text);
@@ -470,7 +472,7 @@ html, body, #root {
 /* ─── Map Layout ─────────────────────────────────────── */
 .map-layout {
   display: flex;
-  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   position: relative;
 }
@@ -629,7 +631,7 @@ html, body, #root {
 .dashboard-layout {
   position: relative;
   width: 100vw;
-  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 
