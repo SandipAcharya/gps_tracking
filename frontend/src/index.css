@@ -808,8 +808,8 @@ html, body, #root {
 
 .menu-toggle-btn {
   position: absolute;
-  top: calc(env(safe-area-inset-top, 0px) + 1rem);
-  left: 1rem;
+  top: calc(max(env(safe-area-inset-top, 20px), 20px) + 10px);
+  left: 10px;
   z-index: 1500;
   background: white;
   border: 1px solid var(--border);
@@ -827,7 +827,7 @@ html, body, #root {
 /* ─── Map Search Bar ────────────────────────────────── */
 .map-search-bar {
   position: absolute;
-  top: calc(env(safe-area-inset-top, 0px) + 1rem);
+  top: calc(max(env(safe-area-inset-top, 20px), 20px) + 10px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 1000;
@@ -838,14 +838,14 @@ html, body, #root {
 /* Mobile: mirror Menu button — same 1rem gap from right edge */
 @media (max-width: 768px) {
   .map-search-bar {
-    position:absolute;
-    top: calc(env(safe-area-inset-top, 0px) + 1rem);
-    right: 1rem;
-    left: 120px;
-    transform: none;
-    width: auto;
-    max-width: none;
-    z-index: 1400;
+    position: absolute !important;
+    top: calc(max(env(safe-area-inset-top, 20px), 20px) + 10px) !important;
+    right: 10px !important;
+    left: 120px !important;
+    transform: none !important;
+    width: auto !important;
+    max-width: none !important;
+    z-index: 1400 !important;
   }
   .sidebar {
     width: 100vw;
